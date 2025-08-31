@@ -1,10 +1,10 @@
-<!-- VERSION MIT PRO-FEATURES & STABILITÄTS-FIXES -->
+<!-- VERSION MIT PRO-FEATURES & STABILITÄTS-FIXES (CAMERA HOTFIX 2025-08-31) -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Reparatur Manager Online v1.33</title>
+  <title>Reparatur Manager Online v1.34</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -19,8 +19,8 @@
       .table-row-urgent { background-color: #fee2e2; }
 
       /* QR Scanner Fixes for PC Zoom */
-      #qr-reader { width: 100%; max-width: 560px; border: 2px solid #4f46e5; border-radius: .5rem; overflow: hidden; transform: scale(1) !important; position: relative; }
-      #qr-reader video { max-width: 100%; will-change: transform; background:#000; object-fit: cover; }
+      #qr-reader { width: 100%; max-width: 560px; border: 2px solid #4f46e5; border-radius: .5rem; overflow: hidden; position: relative; }
+      #qr-reader video { max-width: 100%; background:#000; object-fit: cover; transform-origin: center; }
 
       .spinner { border: 4px solid rgba(0, 0, 0, 0.1); width: 36px; height: 36px; border-radius: 50%; border-left-color: #4f46e5; animation: spin 1s ease infinite; }
       
@@ -32,55 +32,12 @@
       .toast-success { background-color: #22c55e; color: white; }
       .toast-error { background-color: #ef4444; color: white; }
 
-      /* New, improved Fallout Loader */
-      .fallout-loader {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-        background-color: #0d1a26;
-        font-family: 'Roboto Mono', monospace;
-        overflow: hidden;
-      }
-      .vault-logo {
-        width: 200px;
-        height: 200px;
-        border-radius: 50%;
-        background: radial-gradient(circle, #003c5a 0%, #00283c 100%);
-        border: 10px solid #005a87;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        box-shadow: 0 0 30px rgba(0, 191, 255, 0.5), inset 0 0 20px rgba(0,0,0,0.7);
-        position: relative;
-      }
-      .vault-gear {
-        width: 180px;
-        height: 180px;
-        position: absolute;
-        background-image: 
-          radial-gradient(circle, transparent 60%, #0077b3 61%, #0077b3 65%, transparent 66%),
-          repeating-conic-gradient(#0077b3 0% 5%, transparent 5% 10%);
-        -webkit-mask-image: radial-gradient(circle, transparent 60%, black 61%);
-        mask-image: radial-gradient(circle, transparent 60%, black 61%);
-        animation: spin 10s linear infinite;
-      }
-      .vault-number {
-        font-size: 4rem;
-        font-weight: 700;
-        color: #ffc107;
-        text-shadow: 0 0 10px #ffc107, 0 0 20px #ff8f00;
-        z-index: 10;
-      }
-      .loading-text {
-        margin-top: 2rem;
-        color: #00bfff;
-        font-size: 1.125rem;
-        letter-spacing: 0.2em;
-        text-shadow: 0 0 5px #00bfff, 0 0 10px #00bfff;
-        animation: blink 1.5s linear infinite;
-      }
+      /* Fallout Loader */
+      .fallout-loader { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; background-color: #0d1a26; font-family: 'Roboto Mono', monospace; overflow: hidden; }
+      .vault-logo { width: 200px; height: 200px; border-radius: 50%; background: radial-gradient(circle, #003c5a 0%, #00283c 100%); border: 10px solid #005a87; display: flex; justify-content: center; align-items: center; box-shadow: 0 0 30px rgba(0, 191, 255, 0.5), inset 0 0 20px rgba(0,0,0,0.7); position: relative; }
+      .vault-gear { width: 180px; height: 180px; position: absolute; background-image: radial-gradient(circle, transparent 60%, #0077b3 61%, #0077b3 65%, transparent 66%), repeating-conic-gradient(#0077b3 0% 5%, transparent 5% 10%); -webkit-mask-image: radial-gradient(circle, transparent 60%, black 61%); mask-image: radial-gradient(circle, transparent 60%, black 61%); animation: spin 10s linear infinite; }
+      .vault-number { font-size: 4rem; font-weight: 700; color: #ffc107; text-shadow: 0 0 10px #ffc107, 0 0 20px #ff8f00; z-index: 10; }
+      .loading-text { margin-top: 2rem; color: #00bfff; font-size: 1.125rem; letter-spacing: 0.2em; text-shadow: 0 0 5px #00bfff, 0 0 10px #00bfff; animation: blink 1.5s linear infinite; }
       @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
       @keyframes blink { 50% { opacity: 0.5; } }
       th { cursor: pointer; user-select: none; }
@@ -487,7 +444,7 @@
         <div class="md:col-span-2">
           <label class="block text-sm font-medium text-gray-700 mb-1">{{ t.cameraLabel }}</label>
           <select v-model="selectedCameraId" @change="restartScanner" class="w-full py-2 px-3 border border-gray-300 bg-white rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-            <option v-for="c in cameras" :key="c.id" :value="c.id">{{ c.label }}</option>
+            <option v-for="c in cameras" :key="c.id" :value="c.id">{{ c.label || ('Kamera ' + (c.id?.slice?.(-4) || '')) }}</option>
           </select>
         </div>
         <div class="flex items-end">
@@ -630,7 +587,7 @@
   const appConfig = {
     data() {
       return {
-        version: '1.32',
+        version: '1.34',
         isAuthReady: false,
         user: { loggedIn: false, email: null, uid: null, isAdmin: false },
         loginForm: { email: '', password: '', error: '' },
@@ -672,6 +629,8 @@
         showScanner: false,
         html5QrCode: null,
         isScanningWithAi: false,
+        isStartingScanner: false,
+        cameraStartPromise: null,
 
         showConfirmModal: false,
         confirmMessage: '',
@@ -780,7 +739,7 @@
                 notifEntryDeleted: 'Eintrag gelöscht.',
                 notifDeleteError: 'Fehler: Eintrag konnte nicht gelöscht werden.',
                 notifNoCamera: 'Keine Kamera gefunden.',
-                notifScannerStartError: 'Scanner konnte nicht gestartet werden.',
+                notifScannerStartError: 'Kamera konnte nicht gestartet werden. Prüfen Sie die Berechtigungen.',
                 notifCameraStartError: 'Kamera konnte nicht gestartet werden. Prüfen Sie die Berechtigungen.',
                 notifQrSuccess: 'QR-Code erfolgreich verarbeitet!',
                 notifQrError: 'QR-Code konnte nicht verarbeitet werden.',
@@ -790,7 +749,9 @@
                 notifNowOffline: 'Sie sind jetzt offline. Änderungen werden lokal gespeichert.',
                 enterFullscreen: "Vollbildmodus",
                 exitFullscreen: "Vollbildmodus beenden",
-                aiScanActive: "KI analysiert Bild..."
+                aiScanActive: "KI analysiert Bild...",
+                notifVideoNotReady: "Kamera ist noch nicht bereit. Bitte 1-2 Sekunden warten und erneut versuchen.",
+                notifCaptureFailed: "Foto konnte nicht aufgenommen werden.",
             },
             fr: {
                 mainTitle: "Gestionnaire de Réparation",
@@ -878,7 +839,7 @@
                 notifEntryDeleted: 'Entrée supprimée.',
                 notifDeleteError: "Erreur: L'entrée n'a pas pu être supprimée.",
                 notifNoCamera: 'Aucune caméra trouvée.',
-                notifScannerStartError: 'Le scanner n\'a pas pu être démarré.',
+                notifScannerStartError: 'La caméra n\'a pas pu être démarrée. Vérifiez les autorisations.',
                 notifCameraStartError: 'La caméra n\'a pas pu être démarrée. Vérifiez les autorisations.',
                 notifQrSuccess: 'Code QR traité avec succès!',
                 notifQrError: 'Le code QR n\'a pas pu être traité.',
@@ -888,7 +849,9 @@
                 notifNowOffline: 'Vous êtes maintenant hors ligne. Les modifications sont enregistrées localement.',
                 enterFullscreen: "Plein écran",
                 exitFullscreen: "Quitter le plein écran",
-                aiScanActive: "L'IA analyse l'image..."
+                aiScanActive: "L'IA analyse l'image...",
+                notifVideoNotReady: "La caméra n'est pas prête. Attendez 1-2 secondes et réessayez.",
+                notifCaptureFailed: "Impossible de prendre la photo.",
             }
         }
       }
@@ -1147,17 +1110,19 @@
         }
       },
       async startScanner() {
-          this.showScanner = true;
-          await this.$nextTick();
+          if (this.isStartingScanner) return;
+          this.isStartingScanner = true;
           try {
               if (!this.html5QrCode) {
-                this.html5QrCode = new Html5Qrcode("qr-reader", { formatsToSupport: [0] });
+                // Don't pass formatsToSupport with raw number to avoid enum mismatch on some devices
+                this.html5QrCode = new Html5Qrcode("qr-reader");
               }
               const devices = await Html5Qrcode.getCameras();
               if (devices && devices.length) {
                   this.cameras = devices;
                   if (!this.selectedCameraId || !this.cameras.some(c => c.id === this.selectedCameraId)) {
-                      const rearCamera = devices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rück'));
+                      // Prefer rear camera if label known; otherwise take first
+                      const rearCamera = devices.find(d => (d.label || '').toLowerCase().includes('back') || (d.label || '').toLowerCase().includes('rück'));
                       this.selectedCameraId = rearCamera ? rearCamera.id : devices[0].id;
                   }
               } else {
@@ -1165,14 +1130,16 @@
                   this.showScanner = false;
                   return;
               }
-              this.restartScanner();
+              await this._startCameraInternal();
           } catch (err) {
               console.error("Fehler beim Initialisieren des Scanners:", err);
               this.showNotification(this.t.notifScannerStartError, 'error');
               this.showScanner = false;
+          } finally {
+              this.isStartingScanner = false;
           }
       },
-      async restartScanner() {
+      async _startCameraInternal() {
           if (!this.html5QrCode || !this.selectedCameraId) return;
           try {
               if (this.html5QrCode.isScanning) {
@@ -1186,28 +1153,43 @@
                       return { width: size, height: size };
                   }
               };
+              // Start without decoding callback (we capture frames manually)
               await this.html5QrCode.start(
-                  this.selectedCameraId, 
+                  this.selectedCameraId,
                   config,
-                  (decodedText) => { /* Bypassed by AI method */ },
-                  (errorMessage) => { /* Ignore library's errors */ }
+                  () => {},
+                  () => {}
               );
-              setTimeout(() => this.updateCameraCapabilities(), 500);
+              // Wait for the <video> to appear & be ready
+              await this.ensureVideoReady();
+              setTimeout(() => this.updateCameraCapabilities(), 300);
           } catch (err) {
-              console.error("Fehler beim Neustart des Scanners:", err);
+              console.error("Fehler beim Starten der Kamera:", err);
               this.showNotification(this.t.notifCameraStartError, 'error');
+          }
+      },
+      async restartScanner() {
+          if (this.isStartingScanner) return;
+          this.isStartingScanner = true;
+          try {
+              await this._startCameraInternal();
+          } finally {
+              this.isStartingScanner = false;
           }
       },
       async updateCameraCapabilities() {
           try {
-              const track = this.html5QrCode.getRunningTrack();
-              if (track) {
+              const track = this.html5QrCode?.getRunningTrack?.();
+              if (track && track.getCapabilities) {
                   const capabilities = track.getCapabilities();
                   this.hasTorch = !!capabilities.torch;
                   if (capabilities.zoom) {
                       this.cameraZoomCapabilities = capabilities.zoom;
                       if (this.zoomLevel < capabilities.zoom.min) this.zoomLevel = capabilities.zoom.min;
                   } else { this.cameraZoomCapabilities = null; }
+              } else {
+                  this.hasTorch = false;
+                  this.cameraZoomCapabilities = null;
               }
           } catch (err) { console.error("Fehler bei Kamera-Fähigkeiten:", err); }
       },
@@ -1233,17 +1215,49 @@
           this.cssZoomLevel = 1; this.cameraZoomCapabilities = null;
       },
       async toggleTorch() {
-          if (this.html5QrCode && this.html5QrCode.isScanning && this.hasTorch) {
-              this.torchOn = !this.torchOn;
-              try {
-                  await this.html5QrCode.applyVideoConstraints({ advanced: [{ torch: this.torchOn }] });
-              } catch(err) { this.showNotification(this.t.notifTorchError, 'error'); }
-          }
+          try {
+              const track = this.html5QrCode?.getRunningTrack?.();
+              if (track && track.applyConstraints) {
+                  this.torchOn = !this.torchOn;
+                  await track.applyConstraints({ advanced: [{ torch: this.torchOn }] });
+              } else {
+                  this.showNotification(this.t.notifTorchError, 'error');
+              }
+          } catch(err) { this.showNotification(this.t.notifTorchError, 'error'); }
       },
       applyZoom() {
-          if (this.html5QrCode && this.html5QrCode.isScanning && this.cameraZoomCapabilities) {
-              this.html5QrCode.applyVideoConstraints({ advanced: [{ zoom: this.zoomLevel }] });
+          try {
+              const track = this.html5QrCode?.getRunningTrack?.();
+              if (track && track.applyConstraints && this.cameraZoomCapabilities) {
+                  track.applyConstraints({ advanced: [{ zoom: this.zoomLevel }] });
+              }
+          } catch (e) { /* ignore */ }
+      },
+      async ensureVideoReady(timeoutMs = 3000) {
+          const video = await this.waitForVideoEl(timeoutMs);
+          if (!video) throw new Error('Video element not found');
+          // Ensure important attributes on iOS
+          video.setAttribute('playsinline', 'true');
+          let waited = 0;
+          const step = 100;
+          while ((video.readyState < video.HAVE_CURRENT_DATA || video.videoWidth === 0) && waited < timeoutMs) {
+              await new Promise(r => setTimeout(r, step));
+              waited += step;
           }
+          if (video.videoWidth === 0) {
+              this.showNotification(this.t.notifVideoNotReady, 'error');
+              throw new Error('Video not ready');
+          }
+          return video;
+      },
+      async waitForVideoEl(timeoutMs = 3000) {
+          const start = Date.now();
+          let video = document.querySelector('#qr-reader video');
+          while (!video && Date.now() - start < timeoutMs) {
+              await new Promise(r => setTimeout(r, 50));
+              video = document.querySelector('#qr-reader video');
+          }
+          return video || null;
       },
       processQRCode(t){
         const p = this.parseQRCodeData(t||'');
@@ -1330,14 +1344,30 @@
               })
               .finally(() => { this.isAiLoading = false; });
       },
-      async callGeminiApi(prompt) { 
-        // Dies ist eine MOCK-Implementierung für die textbasierten KI-Anfragen.
-        console.log("Simulating Gemini API call with prompt:", prompt);
-        return new Promise(resolve => {
-            setTimeout(() => {
-                resolve("Dies ist eine simulierte KI-Antwort. Die echte API-Integration für Text-Prompts muss noch implementiert werden.");
-            }, 1000);
-        });
+      async callGeminiApi(prompt) {
+        const apiKey = ""; // Wird von der Umgebung bereitgestellt
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+        const payload = {
+            contents: [{ parts: [{ text: prompt }] }],
+        };
+        try {
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!response.ok) {
+                const errorBody = await response.json();
+                console.error('API Error Response:', errorBody);
+                throw new Error(`API-Fehler: ${response.status} ${response.statusText}`);
+            }
+            const result = await response.json();
+            const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+            return text?.trim();
+        } catch (error) {
+            console.error('Fehler bei der Kommunikation mit der Gemini API:', error);
+            throw error;
+        }
       },
        copyToClipboard(text) {
             const textArea = document.createElement("textarea");
@@ -1355,38 +1385,53 @@
             document.body.removeChild(textArea);
       },
       async captureAndAnalyzeFrame() {
-        if (!this.html5QrCode || !this.html5QrCode.isScanning) { this.showNotification('Scanner ist nicht aktiv.', 'error'); return; }
-        const video = document.querySelector("#qr-reader video");
-        if (!video) { this.showNotification('Kamera-Stream nicht gefunden.', 'error'); return; }
-
-        // NEUE PRÜFUNG: Sicherstellen, dass die Kameradaten geladen sind, bevor ein Foto gemacht wird.
-        if (video.readyState < video.HAVE_METADATA || video.videoWidth === 0) {
-            this.showNotification('Kamera ist noch nicht ganz bereit. Bitte warten Sie einen Moment und versuchen Sie es erneut.', 'error');
-            return;
-        }
-
-        this.isScanningWithAi = true;
         try {
-            const canvas = document.createElement('canvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const context = canvas.getContext('2d');
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const base64ImageData = canvas.toDataURL('image/jpeg').split(',')[1];
-            const decodedText = await this.callGeminiForQrCode(base64ImageData);
-            if (decodedText && decodedText.toUpperCase() !== 'NO_QR_CODE') {
-                this.onScanSuccess(decodedText);
-            } else {
-                this.showNotification('Kein QR-Code im Bild gefunden. Bitte versuchen Sie es erneut.', 'error');
-            }
+          const track = this.html5QrCode?.getRunningTrack?.();
+          if (!this.html5QrCode || !this.html5QrCode.isScanning || !track) {
+              this.showNotification('Scanner ist nicht aktiv.', 'error');
+              return;
+          }
+
+          this.isScanningWithAi = true;
+
+          // Prefer ImageCapture if available (Android Chrome)
+          let base64ImageData = null;
+          if ('ImageCapture' in window) {
+              try {
+                  const imageCapture = new ImageCapture(track);
+                  const blob = await imageCapture.takePhoto();
+                  const arrayBuff = await blob.arrayBuffer();
+                  base64ImageData = btoa(String.fromCharCode(...new Uint8Array(arrayBuff)));
+              } catch (e) {
+                  console.warn('ImageCapture fehlgeschlagen, Fallback zu Canvas:', e);
+              }
+          }
+
+          if (!base64ImageData) {
+              const video = await this.ensureVideoReady(4000);
+              const canvas = document.createElement('canvas');
+              // Nutze die nativen Videodimensionen für beste Qualität
+              canvas.width = video.videoWidth;
+              canvas.height = video.videoHeight;
+              const context = canvas.getContext('2d');
+              context.drawImage(video, 0, 0, canvas.width, canvas.height);
+              base64ImageData = canvas.toDataURL('image/jpeg', 0.92).split(',')[1];
+          }
+
+          const decodedText = await this.callGeminiForQrCode(base64ImageData);
+          if (decodedText && decodedText.toUpperCase() !== 'NO_QR_CODE') {
+              this.onScanSuccess(decodedText);
+          } else {
+              this.showNotification('Kein QR-Code im Bild gefunden. Bitte versuchen Sie es erneut.', 'error');
+          }
         } catch (error) {
             console.error('Fehler bei der Bilderfassung oder KI-Analyse:', error);
-            this.showNotification('Ein Fehler ist aufgetreten: ' + error.message, 'error');
+            this.showNotification(this.t.notifCaptureFailed + ' ' + (error?.message || ''), 'error');
         } finally {
             this.isScanningWithAi = false;
         }
-    },
-    async callGeminiForQrCode(base64ImageData) {
+      },
+      async callGeminiForQrCode(base64ImageData) {
         const apiKey = ""; // Wird von der Umgebung bereitgestellt
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
         const payload = {
@@ -1415,7 +1460,7 @@
             console.error('Fehler bei der Kommunikation mit der Gemini API:', error);
             throw error;
         }
-    },
+      },
 
       // --- Admin Management ---
       async addUserRole(){
@@ -1589,7 +1634,7 @@
             if(this.user.isAdmin) onSnapshot(collection(db,'users'), s => { this.userList = s.docs.map(d => ({ id:d.id, ...d.data() })); });
 
             if (isMobileDevice) {
-                // this.toggleFullscreen(); // Deactivated for now, can cause issues
+                // Optional: Auto-Fullscreen deaktiviert
             }
           } else {
             this.user = { loggedIn:false, email:null, uid:null, isAdmin:false };
@@ -1599,7 +1644,7 @@
         });
       });
 
-      const minDelay = new Promise(resolve => setTimeout(resolve, 1500));
+      const minDelay = new Promise(resolve => setTimeout(resolve, 1200));
       await Promise.all([authCheck, minDelay]);
       this.isAuthReady = true;
     }
@@ -1612,4 +1657,3 @@
 </script>
 </body>
 </html>
-
