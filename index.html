@@ -1,10 +1,10 @@
-<!-- VERSION MIT PRO-FEATURES & STABILITÄTS-FIXES (CAMERA HOTFIX 2025-08-31) -->
+<!-- VERSION MIT PRO-FEATURES & STABILITÄTS-FIXES (MOBILE KAMERA) -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Reparatur Manager Online v1.34</title>
+  <title>Reparatur Manager Online v1.33</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -19,8 +19,8 @@
       .table-row-urgent { background-color: #fee2e2; }
 
       /* QR Scanner Fixes for PC Zoom */
-      #qr-reader { width: 100%; max-width: 560px; border: 2px solid #4f46e5; border-radius: .5rem; overflow: hidden; position: relative; }
-      #qr-reader video { max-width: 100%; background:#000; object-fit: cover; transform-origin: center; }
+      #qr-reader { width: 100%; max-width: 560px; border: 2px solid #4f46e5; border-radius: .5rem; overflow: hidden; transform: scale(1) !important; position: relative; }
+      #qr-reader video { max-width: 100%; will-change: transform; background:#000; object-fit: cover; }
 
       .spinner { border: 4px solid rgba(0, 0, 0, 0.1); width: 36px; height: 36px; border-radius: 50%; border-left-color: #4f46e5; animation: spin 1s ease infinite; }
       
@@ -191,7 +191,8 @@
             <label class="block text-sm font-medium text-gray-700">{{ t.qrCodeLabel }}</label>
             <div class="mt-1 flex rounded-md shadow-sm">
               <input v-model="qrCodeInput" @keyup.enter.prevent="processQRCode(qrCodeInput)" @keydown="handleQrKeyDown" type="text" class="flex-1 block w-full min-w-0 rounded-none rounded-l-md py-2 px-3 border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" :placeholder="t.scanPlaceholder">
-              <button @click="startScanner" type="button" class="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 hover:bg-gray-100">
+              <!-- Wichtig: nur Modal öffnen; Start erfolgt nach dem Rendern -->
+              <button @click="openScannerModal" type="button" class="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 hover:bg-gray-100">
                 <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h4a1 1 0 010 2H5v2a1 1 0 11-2 0V4zm14 0a1 1 0 00-1-1h-4a1 1 0 100 2h3v2a1 1 0 102 0V4zm-2 12a1 1 0 01-1 1h-4a1 1 0 110-2h3v-2a1 1 0 112 0v3zM4 15a1 1 0 011-1h3a1 1 0 110 2H5a1 1 0 01-1-1zm5-8a1 1 0 011-1h2a1 1 0 110 2h-2a1 1 0 01-1-1zM8 9a1 1 0 00-1 1v2a1 1 0 102 0v-2a1 1 0 00-1-1zm5 1a1 1 0 100-2 1 1 0 000 2zM8 13a1 1 0 100-2 1 1 0 000 2zm5-1a1 1 0 11-2 0 1 1 0 012 0z" clip-rule="evenodd" /></svg>
               </button>
             </div>
@@ -398,7 +399,7 @@
         <h4 class="font-semibold mb-2">{{ t.addUserRoleTitle }}</h4>
         <form @submit.prevent="addUserRole">
           <input v-model="newUser.email" type="email" :placeholder="t.newUserEmailPlaceholder" required class="block w-full mb-2 p-2 border rounded">
-          <div class="flex items-center mb-2"><input v-model="newUser.isAdmin" type="checkbox" id="isAdmin" class="h-4 w-4 text-indigo-600 border-gray-300 rounded"><label for="isAdmin" class="ml-2 block text-sm text-gray-900">{{ t.isAdminLabel }}</label></div>
+          <div class="flex.items-center mb-2"><input v-model="newUser.isAdmin" type="checkbox" id="isAdmin" class="h-4 w-4 text-indigo-600 border-gray-300 rounded"><label for="isAdmin" class="ml-2 block text-sm text-gray-900">{{ t.isAdminLabel }}</label></div>
           <button type="submit" class="bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700">{{ t.saveRoleButton }}</button>
         </form>
       </div>
@@ -543,7 +544,7 @@
   // Firebase SDKs
   import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
   import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
-  import { getFirestore, collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, serverTimestamp, query, getDocs, setDoc, orderBy, where, limit, startAfter, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+  import { getFirestore, collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, serverTimestamp, query, getDocs, setDoc, orderBy, where, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
   
   // Vue 3
   import { createApp } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
@@ -564,14 +565,13 @@
   // Enable Firestore offline persistence only on mobile devices
   const isMobileDevice = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   if (isMobileDevice) {
-    enableIndexedDbPersistence(db)
-      .catch((err) => {
-          if (err.code == 'failed-precondition') {
-              console.warn("Firestore persistence failed: Multiple tabs open.");
-          } else if (err.code == 'unimplemented') {
-              console.warn("Firestore persistence not available in this browser.");
-          }
-      });
+    enableIndexedDbPersistence(db).catch((err) => {
+      if (err.code == 'failed-precondition') {
+        console.warn("Firestore persistence failed: Multiple tabs open.");
+      } else if (err.code == 'unimplemented') {
+        console.warn("Firestore persistence not available in this browser.");
+      }
+    });
   }
 
   const modelMap = {"02660000":"CH-7722 TIPTEL","72682000":"CH-S33 TIPTEL","02670000":"CH-7724 TIPTEL"};
@@ -587,7 +587,7 @@
   const appConfig = {
     data() {
       return {
-        version: '1.34',
+        version: '1.33',
         isAuthReady: false,
         user: { loggedIn: false, email: null, uid: null, isAdmin: false },
         loginForm: { email: '', password: '', error: '' },
@@ -629,8 +629,7 @@
         showScanner: false,
         html5QrCode: null,
         isScanningWithAi: false,
-        isStartingScanner: false,
-        cameraStartPromise: null,
+        startStopLock: false,
 
         showConfirmModal: false,
         confirmMessage: '',
@@ -739,7 +738,7 @@
                 notifEntryDeleted: 'Eintrag gelöscht.',
                 notifDeleteError: 'Fehler: Eintrag konnte nicht gelöscht werden.',
                 notifNoCamera: 'Keine Kamera gefunden.',
-                notifScannerStartError: 'Kamera konnte nicht gestartet werden. Prüfen Sie die Berechtigungen.',
+                notifScannerStartError: 'Scanner konnte nicht gestartet werden.',
                 notifCameraStartError: 'Kamera konnte nicht gestartet werden. Prüfen Sie die Berechtigungen.',
                 notifQrSuccess: 'QR-Code erfolgreich verarbeitet!',
                 notifQrError: 'QR-Code konnte nicht verarbeitet werden.',
@@ -749,9 +748,7 @@
                 notifNowOffline: 'Sie sind jetzt offline. Änderungen werden lokal gespeichert.',
                 enterFullscreen: "Vollbildmodus",
                 exitFullscreen: "Vollbildmodus beenden",
-                aiScanActive: "KI analysiert Bild...",
-                notifVideoNotReady: "Kamera ist noch nicht bereit. Bitte 1-2 Sekunden warten und erneut versuchen.",
-                notifCaptureFailed: "Foto konnte nicht aufgenommen werden.",
+                aiScanActive: "KI analysiert Bild..."
             },
             fr: {
                 mainTitle: "Gestionnaire de Réparation",
@@ -806,7 +803,7 @@
                 saveButton: "Enregistrer",
                 manageUsers: "Gérer les utilisateurs",
                 addUserInstructionTitle: "Instructions pour l'ajout",
-                addUserStep1: `Ouvrez la <a href="https://console.firebase.google.com/" target="_blank" class="underline hover:text-blue-600">console Firebase</a>.`,
+                addUserStep1: `Ouvrez la <a href=\"https://console.firebase.google.com/\" target=\"_blank\" class=\"underline hover:text-blue-600\">console Firebase</a>.`,
                 addUserStep2: "Authentication → Users → Add user.",
                 addUserStep3: "Créez un utilisateur avec e-mail & mot de passe.",
                 addUserStep4: "Entrez le même e-mail ci-dessous et assignez un rôle.",
@@ -839,7 +836,7 @@
                 notifEntryDeleted: 'Entrée supprimée.',
                 notifDeleteError: "Erreur: L'entrée n'a pas pu être supprimée.",
                 notifNoCamera: 'Aucune caméra trouvée.',
-                notifScannerStartError: 'La caméra n\'a pas pu être démarrée. Vérifiez les autorisations.',
+                notifScannerStartError: 'Le scanner n\'a pas pu être démarré.',
                 notifCameraStartError: 'La caméra n\'a pas pu être démarrée. Vérifiez les autorisations.',
                 notifQrSuccess: 'Code QR traité avec succès!',
                 notifQrError: 'Le code QR n\'a pas pu être traité.',
@@ -849,9 +846,7 @@
                 notifNowOffline: 'Vous êtes maintenant hors ligne. Les modifications sont enregistrées localement.',
                 enterFullscreen: "Plein écran",
                 exitFullscreen: "Quitter le plein écran",
-                aiScanActive: "L'IA analyse l'image...",
-                notifVideoNotReady: "La caméra n'est pas prête. Attendez 1-2 secondes et réessayez.",
-                notifCaptureFailed: "Impossible de prendre la photo.",
+                aiScanActive: "L'IA analyse l'image..."
             }
         }
       }
@@ -865,6 +860,7 @@
         if (!isShowing) {
             this.cleanupScanner();
         } else {
+            // Scanner erst nach Render starten
             this.$nextTick(() => this.startScanner());
         }
       },
@@ -892,34 +888,24 @@
       }
     },
     computed: {
-      t() {
-        return this.translations[this.currentLanguage];
-      },
-      tableHeaders() {
-        return this.t.tableHeaders;
-      },
+      t() { return this.translations[this.currentLanguage]; },
+      tableHeaders() { return this.t.tableHeaders; },
       sortedAndFilteredRepairs() {
         let filtered = this.repairs;
-        if (this.filter.house) {
-            filtered = filtered.filter(r => r.house === this.filter.house);
-        }
+        if (this.filter.house) { filtered = filtered.filter(r => r.house === this.filter.house); }
         if (this.filter.search) {
             const s = this.filter.search.toLowerCase();
             filtered = filtered.filter(r => Object.values(r).some(v => String(v).toLowerCase().includes(s)));
         }
-        
         if (this.sortKey) {
             const sorted = [...filtered];
             sorted.sort((a, b) => {
                 let valA = a[this.sortKey];
                 let valB = b[this.sortKey];
-                
                 if (valA === undefined || valA === null) valA = '';
                 if (valB === undefined || valB === null) valB = '';
-
                 if (typeof valA === 'string') valA = valA.toLowerCase();
                 if (typeof valB === 'string') valB = valB.toLowerCase();
-                
                 if (valA < valB) return this.sortOrder === 'asc' ? -1 : 1;
                 if (valA > valB) return this.sortOrder === 'asc' ? 1 : -1;
                 return 0;
@@ -957,6 +943,7 @@
       }
     },
     methods: {
+      openScannerModal(){ this.showScanner = true; },
       isUrgent(repair) {
         if (!repair || !repair.status || !repair.captured_at) return false;
         if (repair.status !== 'Offen') return false;
@@ -966,17 +953,9 @@
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         return diffDays > 14;
       },
-      setLanguage(lang) {
-        this.currentLanguage = lang;
-        document.documentElement.lang = lang;
-      },
+      setLanguage(lang) { this.currentLanguage = lang; document.documentElement.lang = lang; },
       getStatusTranslationKey(status) {
-        const statusMap = {
-            'Offen': 'statusOpen',
-            'In Bearbeitung': 'statusInProgress',
-            'Abgeschlossen': 'statusCompleted',
-            'Beim Kunden repariert': 'statusCompletedAtCustomer'
-        };
+        const statusMap = { 'Offen': 'statusOpen', 'In Bearbeitung': 'statusInProgress', 'Abgeschlossen': 'statusCompleted', 'Beim Kunden repariert': 'statusCompletedAtCustomer' };
         return statusMap[status] || status;
       },
       // --- Notifications ---
@@ -984,21 +963,9 @@
           const id = Date.now() + Math.random();
           const notification = { id, message, type: `toast-${type}`, show: false };
           this.notifications.push(notification);
-          
-          this.$nextTick(() => {
-              const toast = this.notifications.find(n => n.id === id);
-              if (toast) toast.show = true;
-          });
-
-          setTimeout(() => {
-              const toast = this.notifications.find(n => n.id === id);
-              if (toast) toast.show = false;
-              setTimeout(() => {
-                  this.notifications = this.notifications.filter(n => n.id !== id);
-              }, 300);
-          }, duration);
+          this.$nextTick(() => { const toast = this.notifications.find(n => n.id === id); if (toast) toast.show = true; });
+          setTimeout(() => { const toast = this.notifications.find(n => n.id === id); if (toast) toast.show = false; setTimeout(() => { this.notifications = this.notifications.filter(n => n.id !== id); }, 300); }, duration);
       },
-
       // --- Status Class ---
       getStatusClass(status) {
         switch (status) {
@@ -1013,52 +980,34 @@
                 return 'bg-gray-100 text-gray-800';
         }
       },
-
       // --- Confirmation Modal ---
       confirmDelete(type, item) {
           if (type === 'repair') {
               this.confirmMessage = this.t.notifConfirmDelete(item.fiche || 'Unbekannt');
               this.confirmAction = () => this.deleteRepair(item.id);
           } else if (type === 'user') {
-              this.confirmMessage = `Möchten Sie den Benutzer "${item.email}" wirklich löschen?`; // Needs translation
+              this.confirmMessage = `Möchten Sie den Benutzer "${item.email}" wirklich löschen?`;
               this.confirmAction = () => this.deleteUser(item.id);
           } else if (type === 'house') {
-              this.confirmMessage = `Möchten Sie das Haus "${item}" wirklich löschen?`; // Needs translation
+              this.confirmMessage = `Möchten Sie das Haus "${item}" wirklich löschen?`;
               this.confirmAction = () => this.deleteHouse(item);
           } else if (type === 'technician') {
-              this.confirmMessage = `Möchten Sie den Techniker "${item}" wirklich löschen?`; // Needs translation
+              this.confirmMessage = `Möchten Sie den Techniker "${item}" wirklich löschen?`;
               this.confirmAction = () => this.deleteTechnician(item);
           }
           this.showConfirmModal = true;
       },
-      executeConfirm() {
-          if (typeof this.confirmAction === 'function') this.confirmAction();
-          this.cancelConfirm();
-      },
-      cancelConfirm() {
-          this.showConfirmModal = false;
-          this.confirmMessage = '';
-          this.confirmAction = null;
-      },
+      executeConfirm() { if (typeof this.confirmAction === 'function') this.confirmAction(); this.cancelConfirm(); },
+      cancelConfirm() { this.showConfirmModal = false; this.confirmMessage = ''; this.confirmAction = null; },
 
       // --- Auth & Initial Load ---
-      async login(){
-        this.loginForm.error = '';
-        try { await signInWithEmailAndPassword(auth, this.loginForm.email, this.loginForm.password); }
-        catch(e){ this.loginForm.error = 'E-Mail oder Passwort ist falsch.'; console.error(e); }
-      },
+      async login(){ this.loginForm.error = ''; try { await signInWithEmailAndPassword(auth, this.loginForm.email, this.loginForm.password); } catch(e){ this.loginForm.error = 'E-Mail oder Passwort ist falsch.'; console.error(e); } },
       async logout(){ await signOut(auth); },
 
       // --- Data Management ---
       async addRepair(){
-        if (this.houses.length === 0) {
-            this.showNotification(this.t.notifHousesLoading, 'error');
-            return;
-        }
-        if(!this.newEntry.house || !this.newEntry.fiche){ 
-            this.showNotification(this.t.notifFillHouseAndDevice, 'error'); 
-            return; 
-        }
+        if (this.houses.length === 0) { this.showNotification(this.t.notifHousesLoading, 'error'); return; }
+        if(!this.newEntry.house || !this.newEntry.fiche){ this.showNotification(this.t.notifFillHouseAndDevice, 'error'); return; }
         const lastSelectedHouse = this.newEntry.house;
         const dataToSave = JSON.parse(JSON.stringify(this.newEntry));
         await addDoc(collection(db,'repairs'), { ...dataToSave, cost:0, createdAt: serverTimestamp() });
@@ -1066,199 +1015,135 @@
         this.newEntry.house = lastSelectedHouse;
         this.showNotification(this.t.notifRepairAdded, 'success');
       },
-      editRepair(r){ 
-        this.currentEdit = JSON.parse(JSON.stringify(r));
-        if (!this.currentEdit.comments) this.currentEdit.comments = [];
-        if (!this.currentEdit.techniker) this.currentEdit.techniker = '';
-        this.showEditModal = true; 
-      },
+      editRepair(r){ this.currentEdit = JSON.parse(JSON.stringify(r)); if (!this.currentEdit.comments) this.currentEdit.comments = []; if (!this.currentEdit.techniker) this.currentEdit.techniker = ''; this.showEditModal = true; },
       async saveEdit(){
-        if (this.newCommentText.trim()) {
-            this.showNotification(this.t.notifUnsavedComment, 'error', 5000);
-            return;
-        }
+        if (this.newCommentText.trim()) { this.showNotification(this.t.notifUnsavedComment, 'error', 5000); return; }
         const ref = doc(db,'repairs',this.currentEdit.id);
-        const data = { ...JSON.parse(JSON.stringify(this.currentEdit)) }; 
-        delete data.id;
+        const data = { ...JSON.parse(JSON.stringify(this.currentEdit)) }; delete data.id;
         await updateDoc(ref, data);
-        this.showEditModal = false;
-        this.showNotification(this.t.notifChangesSaved, 'success');
+        this.showEditModal = false; this.showNotification(this.t.notifChangesSaved, 'success');
       },
-      async deleteRepair(repairId){
-        try {
-          await deleteDoc(doc(db, 'repairs', repairId));
-          this.showNotification(this.t.notifEntryDeleted, 'info');
-        } catch(error) {
-          console.error("Error during deletion:", error);
-          this.showNotification(this.t.notifDeleteError, 'error');
-        }
-      },
-      toggleSelectAll(e){
-        const displayedIds = this.sortedAndFilteredRepairs.map(r => r.id);
-        if (e.target.checked) {
-          this.selectedRepairs = [...new Set([...this.selectedRepairs, ...displayedIds])];
-        } else {
-          this.selectedRepairs = this.selectedRepairs.filter(id => !displayedIds.includes(id));
-        }
-      },
+      async deleteRepair(repairId){ try { await deleteDoc(doc(db, 'repairs', repairId)); this.showNotification(this.t.notifEntryDeleted, 'info'); } catch(error) { console.error("Error during deletion:", error); this.showNotification(this.t.notifDeleteError, 'error'); } },
+      toggleSelectAll(e){ const displayedIds = this.sortedAndFilteredRepairs.map(r => r.id); if (e.target.checked) { this.selectedRepairs = [...new Set([...this.selectedRepairs, ...displayedIds])]; } else { this.selectedRepairs = this.selectedRepairs.filter(id => !displayedIds.includes(id)); } },
       
       // --- QR Code ---
-      handleQrKeyDown(event) {
-        if (event.ctrlKey) {
-            event.preventDefault();
-            event.stopPropagation();
-        }
-      },
+      handleQrKeyDown(event) { if (event.ctrlKey) { event.preventDefault(); event.stopPropagation(); } },
       async startScanner() {
-          if (this.isStartingScanner) return;
-          this.isStartingScanner = true;
+          if (this.startStopLock) return; this.startStopLock = true;
           try {
-              if (!this.html5QrCode) {
-                // Don't pass formatsToSupport with raw number to avoid enum mismatch on some devices
-                this.html5QrCode = new Html5Qrcode("qr-reader");
-              }
-              const devices = await Html5Qrcode.getCameras();
+              // Stelle sicher, dass Container existiert
+              const ensureQrElement = () => new Promise(res => requestAnimationFrame(res));
+              await ensureQrElement();
+
+              // Instanz nur einmal anlegen
+              if (!this.html5QrCode) { this.html5QrCode = new Html5Qrcode("qr-reader", { formatsToSupport: [0] }); }
+
+              // Falls noch ein Scan läuft -> stoppen
+              if (this.html5QrCode.isScanning) { await this.safeStop(false); }
+
+              // Kameras abrufen
+              let devices = [];
+              try { devices = await Html5Qrcode.getCameras(); } catch (e) { console.warn('getCameras() fehlgeschlagen:', e); }
               if (devices && devices.length) {
                   this.cameras = devices;
-                  if (!this.selectedCameraId || !this.cameras.some(c => c.id === this.selectedCameraId)) {
-                      // Prefer rear camera if label known; otherwise take first
-                      const rearCamera = devices.find(d => (d.label || '').toLowerCase().includes('back') || (d.label || '').toLowerCase().includes('rück'));
-                      this.selectedCameraId = rearCamera ? rearCamera.id : devices[0].id;
+                  // Standard: bevorzugt Rückkamera
+                  if (!this.selectedCameraId || !devices.some(d => d.id === this.selectedCameraId)) {
+                      const rear = devices.find(d => (d.label||'').toLowerCase().includes('back') || (d.label||'').toLowerCase().includes('rear') || (d.label||'').toLowerCase().includes('environment'));
+                      this.selectedCameraId = rear ? rear.id : devices[0].id;
                   }
               } else {
-                  this.showNotification(this.t.notifNoCamera, 'error');
-                  this.showScanner = false;
-                  return;
+                  // Kein Geräte-Liste (iOS vor Permission): trotzdem mit facingMode versuchen
+                  this.cameras = [];
               }
-              await this._startCameraInternal();
-          } catch (err) {
-              console.error("Fehler beim Initialisieren des Scanners:", err);
-              this.showNotification(this.t.notifScannerStartError, 'error');
-              this.showScanner = false;
-          } finally {
-              this.isStartingScanner = false;
-          }
-      },
-      async _startCameraInternal() {
-          if (!this.html5QrCode || !this.selectedCameraId) return;
-          try {
-              if (this.html5QrCode.isScanning) {
-                await this.stopScanner(false);
-              }
+
               const config = {
-                  fps: 10,
+                  fps: 15,
                   qrbox: (viewfinderWidth, viewfinderHeight) => {
                       const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
                       const size = Math.floor(minEdge * 0.7);
                       return { width: size, height: size };
-                  }
+                  },
+                  // verbose: true
               };
-              // Start without decoding callback (we capture frames manually)
-              await this.html5QrCode.start(
-                  this.selectedCameraId,
-                  config,
-                  () => {},
-                  () => {}
-              );
-              // Wait for the <video> to appear & be ready
-              await this.ensureVideoReady();
+
+              const decodeCb = (decodedText) => { try { this.onScanSuccess(decodedText); } catch(_){} };
+              const errorCb = (_) => { /* ignorieren */ };
+
+              // Start-Reihenfolge: deviceId -> facingMode env -> erstes Gerät
+              let started = false;
+              const tryStart = async (camera) => {
+                  try {
+                      await this.html5QrCode.start(camera, config, decodeCb, errorCb);
+                      started = true;
+                  } catch (err) {
+                      console.warn('Start-Versuch fehlgeschlagen:', camera, err);
+                      started = false;
+                  }
+                  return started;
+              };
+
+              if (this.selectedCameraId) {
+                  await tryStart(this.selectedCameraId);
+              }
+              if (!started) {
+                  await tryStart({ facingMode: "environment" });
+                  // deviceId aus Track übernehmen, wenn möglich
+                  if (this.html5QrCode.isScanning) {
+                      const track = this.html5QrCode.getRunningTrack?.();
+                      const devId = track?.getSettings?.().deviceId;
+                      if (devId) this.selectedCameraId = devId;
+                  }
+              }
+              if (!started && devices && devices.length) {
+                  await tryStart(devices[0].id);
+                  if (this.html5QrCode.isScanning) this.selectedCameraId = devices[0].id;
+              }
+
+              if (!this.html5QrCode.isScanning) {
+                  this.showNotification(this.t.notifCameraStartError, 'error');
+                  return;
+              }
+
+              // Nach erfolgreichem Start: Fähigkeiten ermitteln
               setTimeout(() => this.updateCameraCapabilities(), 300);
+
           } catch (err) {
-              console.error("Fehler beim Starten der Kamera:", err);
-              this.showNotification(this.t.notifCameraStartError, 'error');
+              console.error("Fehler beim Starten des Scanners:", err);
+              this.showNotification(this.t.notifScannerStartError, 'error');
+          } finally {
+              this.startStopLock = false;
           }
       },
       async restartScanner() {
-          if (this.isStartingScanner) return;
-          this.isStartingScanner = true;
-          try {
-              await this._startCameraInternal();
-          } finally {
-              this.isStartingScanner = false;
-          }
+          if (!this.showScanner) return;
+          if (this.startStopLock) return;
+          await this.safeStop(false);
+          await this.startScanner();
       },
-      async updateCameraCapabilities() {
-          try {
-              const track = this.html5QrCode?.getRunningTrack?.();
-              if (track && track.getCapabilities) {
-                  const capabilities = track.getCapabilities();
-                  this.hasTorch = !!capabilities.torch;
-                  if (capabilities.zoom) {
-                      this.cameraZoomCapabilities = capabilities.zoom;
-                      if (this.zoomLevel < capabilities.zoom.min) this.zoomLevel = capabilities.zoom.min;
-                  } else { this.cameraZoomCapabilities = null; }
-              } else {
-                  this.hasTorch = false;
-                  this.cameraZoomCapabilities = null;
-              }
-          } catch (err) { console.error("Fehler bei Kamera-Fähigkeiten:", err); }
-      },
-      onScanSuccess(decodedText) {
-          this.processQRCode(decodedText);
-          this.showNotification(this.t.notifQrSuccess, 'success');
-          this.stopScanner();
-      },
-      async stopScanner(closeModal = true) {
+      async safeStop(closeModal = true) {
           this.isScanningWithAi = false;
           try {
-              if (this.html5QrCode && this.html5QrCode.isScanning) {
-                  await this.html5QrCode.stop();
-              }
+              if (this.html5QrCode && this.html5QrCode.isScanning) { await this.html5QrCode.stop(); }
           } catch (err) {
-              if (!String(err).includes("not running")) console.error("Fehler beim Stoppen:", err);
+              if (!String(err).includes("not running")) console.warn('Stop-Fehler:', err);
           } finally {
               if (closeModal) this.showScanner = false;
           }
       },
-      cleanupScanner() {
-          this.torchOn = false; this.hasTorch = false; this.zoomLevel = 1;
-          this.cssZoomLevel = 1; this.cameraZoomCapabilities = null;
+      onScanSuccess(decodedText) {
+          this.processQRCode(decodedText);
+          this.showNotification(this.t.notifQrSuccess, 'success');
+          this.safeStop();
       },
+      cleanupScanner() { this.torchOn = false; this.hasTorch = false; this.zoomLevel = 1; this.cssZoomLevel = 1; this.cameraZoomCapabilities = null; },
       async toggleTorch() {
-          try {
-              const track = this.html5QrCode?.getRunningTrack?.();
-              if (track && track.applyConstraints) {
-                  this.torchOn = !this.torchOn;
-                  await track.applyConstraints({ advanced: [{ torch: this.torchOn }] });
-              } else {
-                  this.showNotification(this.t.notifTorchError, 'error');
-              }
-          } catch(err) { this.showNotification(this.t.notifTorchError, 'error'); }
-      },
-      applyZoom() {
-          try {
-              const track = this.html5QrCode?.getRunningTrack?.();
-              if (track && track.applyConstraints && this.cameraZoomCapabilities) {
-                  track.applyConstraints({ advanced: [{ zoom: this.zoomLevel }] });
-              }
-          } catch (e) { /* ignore */ }
-      },
-      async ensureVideoReady(timeoutMs = 3000) {
-          const video = await this.waitForVideoEl(timeoutMs);
-          if (!video) throw new Error('Video element not found');
-          // Ensure important attributes on iOS
-          video.setAttribute('playsinline', 'true');
-          let waited = 0;
-          const step = 100;
-          while ((video.readyState < video.HAVE_CURRENT_DATA || video.videoWidth === 0) && waited < timeoutMs) {
-              await new Promise(r => setTimeout(r, step));
-              waited += step;
+          if (this.html5QrCode && this.html5QrCode.isScanning && this.hasTorch) {
+              this.torchOn = !this.torchOn;
+              try { await this.html5QrCode.applyVideoConstraints({ advanced: [{ torch: this.torchOn }] }); }
+              catch(err) { this.showNotification(this.t.notifTorchError, 'error'); }
           }
-          if (video.videoWidth === 0) {
-              this.showNotification(this.t.notifVideoNotReady, 'error');
-              throw new Error('Video not ready');
-          }
-          return video;
       },
-      async waitForVideoEl(timeoutMs = 3000) {
-          const start = Date.now();
-          let video = document.querySelector('#qr-reader video');
-          while (!video && Date.now() - start < timeoutMs) {
-              await new Promise(r => setTimeout(r, 50));
-              video = document.querySelector('#qr-reader video');
-          }
-          return video || null;
-      },
+      applyZoom() { if (this.html5QrCode && this.html5QrCode.isScanning && this.cameraZoomCapabilities) { this.html5QrCode.applyVideoConstraints({ advanced: [{ zoom: this.zoomLevel }] }); } },
       processQRCode(t){
         const p = this.parseQRCodeData(t||'');
         if(p && (p.phone_model || p.ipei || p.pid)){
@@ -1310,16 +1195,13 @@
               return cleanIpei;
           };
           parsed.ipei = formatIpei(parsed.ipei);
-          if (parsed.date && /W/.test(parsed.date) && parsed.date.length > 5) {
-              parsed.date = parsed.date.slice(0, 5);
-          }
+          if (parsed.date && /W/.test(parsed.date) && parsed.date.length > 5) { parsed.date = parsed.date.slice(0, 5); }
           return parsed;
       },
       
       // --- AI Methods ---
       openAiModal(mode, repairData) {
-          this.aiResponse = '';
-          this.aiQuery = '';
+          this.aiResponse = ''; this.aiQuery = '';
           if (mode === 'analyze_ipei') {
               this.aiModalTitle = this.t.analyzeIpeiTooltip;
               if (!repairData.ipei) { this.showNotification('Bitte geben Sie zuerst eine IPEI ein.', 'error'); return; }
@@ -1332,134 +1214,50 @@
               this.aiModalTitle = this.t.emailForBossTooltip;
               this.aiQuery = `Erstelle eine kurze, professionelle E-Mail an den Vorgesetzten über den Reparaturfall:\n- Gerät: ${repairData.fiche}\n- IPEI: ${repairData.ipei}\n- Fehler: ${repairData.error}\n- Aktueller Status: ${repairData.status}\n- Nächste Schritte: [Platzhalter für nächste Schritte]\n\nDie E-Mail soll den Sachverhalt klar darstellen.`;
           }
-          
-          this.showAiModal = true;
-          this.isAiLoading = true;
-
+          this.showAiModal = true; this.isAiLoading = true;
           this.callGeminiApi(this.aiQuery)
               .then(response => { this.aiResponse = response; })
-              .catch(error => {
-                  this.aiResponse = `Ein Fehler ist aufgetreten: ${error.message}`;
-                  console.error("AI API Error:", error);
-              })
+              .catch(error => { this.aiResponse = `Ein Fehler ist aufgetreten: ${error.message}`; console.error("AI API Error:", error); })
               .finally(() => { this.isAiLoading = false; });
       },
       async callGeminiApi(prompt) {
         const apiKey = ""; // Wird von der Umgebung bereitgestellt
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-        const payload = {
-            contents: [{ parts: [{ text: prompt }] }],
-        };
+        const payload = { contents: [{ parts: [{ text: prompt }] }] };
         try {
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            if (!response.ok) {
-                const errorBody = await response.json();
-                console.error('API Error Response:', errorBody);
-                throw new Error(`API-Fehler: ${response.status} ${response.statusText}`);
-            }
-            const result = await response.json();
-            const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-            return text?.trim();
-        } catch (error) {
-            console.error('Fehler bei der Kommunikation mit der Gemini API:', error);
-            throw error;
-        }
+            const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if (!response.ok) { const errorBody = await response.json(); console.error('API Error Response:', errorBody); throw new Error(`API-Fehler: ${response.status} ${response.statusText}`); }
+            const result = await response.json(); const text = result.candidates?.[0]?.content?.parts?.[0]?.text; return text?.trim();
+        } catch (error) { console.error('Fehler bei der Kommunikation mit der Gemini API:', error); throw error; }
       },
-       copyToClipboard(text) {
-            const textArea = document.createElement("textarea");
-            textArea.value = text;
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            try {
-                document.execCommand('copy');
-                this.showNotification('Text in die Zwischenablage kopiert!', 'success');
-            } catch (err) {
-                this.showNotification('Fehler beim Kopieren.', 'error');
-                console.error('Fallback: Oops, unable to copy', err);
-            }
-            document.body.removeChild(textArea);
-      },
+      copyToClipboard(text) { const textArea = document.createElement("textarea"); textArea.value = text; document.body.appendChild(textArea); textArea.focus(); textArea.select(); try { document.execCommand('copy'); this.showNotification('Text in die Zwischenablage kopiert!', 'success'); } catch (err) { this.showNotification('Fehler beim Kopieren.', 'error'); console.error('Fallback: Oops, unable to copy', err); } document.body.removeChild(textArea); },
       async captureAndAnalyzeFrame() {
+        if (!this.html5QrCode || !this.html5QrCode.isScanning) { this.showNotification('Scanner ist nicht aktiv.', 'error'); return; }
+        const video = document.querySelector("#qr-reader video");
+        if (!video) { this.showNotification('Kamera-Stream nicht gefunden.', 'error'); return; }
+        if (video.readyState < video.HAVE_METADATA || video.videoWidth === 0) { this.showNotification('Kamera ist noch nicht ganz bereit. Bitte warten Sie einen Moment und versuchen Sie es erneut.', 'error'); return; }
+        this.isScanningWithAi = true;
         try {
-          const track = this.html5QrCode?.getRunningTrack?.();
-          if (!this.html5QrCode || !this.html5QrCode.isScanning || !track) {
-              this.showNotification('Scanner ist nicht aktiv.', 'error');
-              return;
-          }
-
-          this.isScanningWithAi = true;
-
-          // Prefer ImageCapture if available (Android Chrome)
-          let base64ImageData = null;
-          if ('ImageCapture' in window) {
-              try {
-                  const imageCapture = new ImageCapture(track);
-                  const blob = await imageCapture.takePhoto();
-                  const arrayBuff = await blob.arrayBuffer();
-                  base64ImageData = btoa(String.fromCharCode(...new Uint8Array(arrayBuff)));
-              } catch (e) {
-                  console.warn('ImageCapture fehlgeschlagen, Fallback zu Canvas:', e);
-              }
-          }
-
-          if (!base64ImageData) {
-              const video = await this.ensureVideoReady(4000);
-              const canvas = document.createElement('canvas');
-              // Nutze die nativen Videodimensionen für beste Qualität
-              canvas.width = video.videoWidth;
-              canvas.height = video.videoHeight;
-              const context = canvas.getContext('2d');
-              context.drawImage(video, 0, 0, canvas.width, canvas.height);
-              base64ImageData = canvas.toDataURL('image/jpeg', 0.92).split(',')[1];
-          }
-
-          const decodedText = await this.callGeminiForQrCode(base64ImageData);
-          if (decodedText && decodedText.toUpperCase() !== 'NO_QR_CODE') {
-              this.onScanSuccess(decodedText);
-          } else {
-              this.showNotification('Kein QR-Code im Bild gefunden. Bitte versuchen Sie es erneut.', 'error');
-          }
-        } catch (error) {
-            console.error('Fehler bei der Bilderfassung oder KI-Analyse:', error);
-            this.showNotification(this.t.notifCaptureFailed + ' ' + (error?.message || ''), 'error');
-        } finally {
-            this.isScanningWithAi = false;
-        }
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const base64ImageData = canvas.toDataURL('image/jpeg').split(',')[1];
+            const decodedText = await this.callGeminiForQrCode(base64ImageData);
+            if (decodedText && decodedText.toUpperCase() !== 'NO_QR_CODE') { this.onScanSuccess(decodedText); }
+            else { this.showNotification('Kein QR-Code im Bild gefunden. Bitte versuchen Sie es erneut.', 'error'); }
+        } catch (error) { console.error('Fehler bei der Bilderfassung oder KI-Analyse:', error); this.showNotification('Ein Fehler ist aufgetreten: ' + error.message, 'error'); }
+        finally { this.isScanningWithAi = false; }
       },
       async callGeminiForQrCode(base64ImageData) {
         const apiKey = ""; // Wird von der Umgebung bereitgestellt
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-        const payload = {
-            contents: [{
-                parts: [
-                    { text: "Finde und dekodiere den QR-Code im Bild. Antworte NUR mit dem reinen Textinhalt des QR-Codes. Wenn kein QR-Code gefunden wird, antworte mit 'NO_QR_CODE'." },
-                    { inlineData: { mimeType: "image/jpeg", data: base64ImageData } }
-                ]
-            }],
-        };
+        const payload = { contents: [{ parts: [ { text: "Finde und dekodiere den QR-Code im Bild. Antworte NUR mit dem reinen Textinhalt des QR-Codes. Wenn kein QR-Code gefunden wird, antworte mit 'NO_QR_CODE'." }, { inlineData: { mimeType: "image/jpeg", data: base64ImageData } } ] }] };
         try {
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            if (!response.ok) {
-                const errorBody = await response.json();
-                console.error('API Error Response:', errorBody);
-                throw new Error(`API-Fehler: ${response.status} ${response.statusText}`);
-            }
-            const result = await response.json();
-            const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-            return text?.trim();
-        } catch (error) {
-            console.error('Fehler bei der Kommunikation mit der Gemini API:', error);
-            throw error;
-        }
+            const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if (!response.ok) { const errorBody = await response.json(); console.error('API Error Response:', errorBody); throw new Error(`API-Fehler: ${response.status} ${response.statusText}`); }
+            const result = await response.json(); const text = result.candidates?.[0]?.content?.parts?.[0]?.text; return text?.trim();
+        } catch (error) { console.error('Fehler bei der Kommunikation mit der Gemini API:', error); throw error; }
       },
 
       // --- Admin Management ---
@@ -1488,10 +1286,7 @@
           }
         }
       },
-      async deleteHouse(houseName){
-        const updated=this.houses.filter(x=>x!==houseName);
-        await setDoc(doc(db,'config','houses'), { list: updated });
-      },
+      async deleteHouse(houseName){ const updated=this.houses.filter(x=>x!==houseName); await setDoc(doc(db,'config','houses'), { list: updated }); },
       async addTechnician(){
         if(this.newTechnicianName && !this.technikerList.includes(this.newTechnicianName)){
           try {
@@ -1505,116 +1300,45 @@
           }
         }
       },
-      async deleteTechnician(technicianName){
-        const updated=this.technikerList.filter(x=>x!==technicianName);
-        await setDoc(doc(db,'config','technicians'), { list: updated });
-      },
+      async deleteTechnician(technicianName){ const updated=this.technikerList.filter(x=>x!==technicianName); await setDoc(doc(db,'config','technicians'), { list: updated }); },
       
       // --- Helper Functions ---
-      addComment() {
-          if (!this.newCommentText.trim()) {
-              this.showNotification(this.t.notifCommentEmpty, 'error');
-              return;
-          }
-          if (!this.currentEdit.comments) {
-              this.currentEdit.comments = [];
-          }
-          this.currentEdit.comments.push({
-              text: this.newCommentText,
-              user: this.user.email,
-              timestamp: Date.now()
-          });
-          this.newCommentText = '';
-      },
-      formatTimestamp(ts) {
-          if (!ts) return '';
-          const date = ts.toDate ? ts.toDate() : new Date(ts);
-          if (isNaN(date)) return '';
-          return date.toLocaleString('de-DE', {
-              day: '2-digit', month: '2-digit', year: 'numeric',
-              hour: '2-digit', minute: '2-digit'
-          });
-      },
+      addComment() { if (!this.newCommentText.trim()) { this.showNotification(this.t.notifCommentEmpty, 'error'); return; } if (!this.currentEdit.comments) { this.currentEdit.comments = []; } this.currentEdit.comments.push({ text: this.newCommentText, user: this.user.email, timestamp: Date.now() }); this.newCommentText = ''; },
+      formatTimestamp(ts) { if (!ts) return ''; const date = ts.toDate ? ts.toDate() : new Date(ts); if (isNaN(date)) return ''; return date.toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); },
 
       // --- Data Listeners & Pagination ---
-      listenToRepairs() {
-          const q = query(collection(db, 'repairs'), orderBy('createdAt', 'desc'));
-          onSnapshot(q, (snapshot) => {
-            this.repairs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-          }, (error) => {
-            console.error("Fehler beim Laden der Reparaturen:", error);
-          });
-      },
-      async loadAllRepairsForStats() {
-          const q = query(collection(db, 'repairs'), orderBy('createdAt', 'desc'));
-          const querySnapshot = await getDocs(q);
-          this.allRepairsForStats = querySnapshot.docs.map(d => d.data());
-      },
-      listenToConfig(docId, listName) {
-          onSnapshot(doc(db, 'config', docId), (d) => {
-              if (d.exists() && d.data().list) {
-                  this[listName] = d.data().list;
-                  if (listName === 'houses' && !this.newEntry.house && this.houses.length > 0) {
-                      this.newEntry.house = this.houses[0];
-                  }
+      listenToRepairs() { const q = query(collection(db, 'repairs'), orderBy('createdAt', 'desc')); onSnapshot(q, (snapshot) => { this.repairs = snapshot.docs.map(d => ({ id: d.id, ...d.data() })); }, (error) => { console.error("Fehler beim Laden der Reparaturen:", error); }); },
+      async loadAllRepairsForStats() { const q = query(collection(db, 'repairs'), orderBy('createdAt', 'desc')); const querySnapshot = await getDocs(q); this.allRepairsForStats = querySnapshot.docs.map(d => d.data()); },
+      async updateCameraCapabilities() {
+          try {
+              const track = this.html5QrCode?.getRunningTrack?.();
+              if (track) {
+                  const capabilities = track.getCapabilities?.() || {};
+                  this.hasTorch = !!capabilities.torch;
+                  if (capabilities.zoom) {
+                      this.cameraZoomCapabilities = capabilities.zoom; 
+                      // Safari gibt evtl. keine min/max – Defaults setzen
+                      if (!('min' in this.cameraZoomCapabilities)) this.cameraZoomCapabilities.min = 1;
+                      if (!('max' in this.cameraZoomCapabilities)) this.cameraZoomCapabilities.max = 5;
+                      if (!('step' in this.cameraZoomCapabilities)) this.cameraZoomCapabilities.step = 0.1;
+                      if (this.zoomLevel < this.cameraZoomCapabilities.min) this.zoomLevel = this.cameraZoomCapabilities.min;
+                  } else { this.cameraZoomCapabilities = null; }
               }
-          });
+          } catch (err) { console.error("Fehler bei Kamera-Fähigkeiten:", err); }
       },
-      capitalizeFirstLetter(string) {
-          return string.charAt(0).toUpperCase() + string.slice(1);
-      },
-      toggleFullscreen() {
-        if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen().catch(err => {
-                console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
-            });
-        } else {
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
-            }
-        }
-      },
-      handleFullscreenChange() {
-          this.isFullscreen = !!document.fullscreenElement;
-      },
-      sortBy(key) {
-        if (this.sortKey === key) {
-            this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
-        } else {
-            this.sortKey = key;
-            this.sortOrder = 'asc';
-        }
-      },
+      listenToConfig(docId, listName) { onSnapshot(doc(db, 'config', docId), (d) => { if (d.exists() && d.data().list) { this[listName] = d.data().list; if (listName === 'houses' && !this.newEntry.house && this.houses.length > 0) { this.newEntry.house = this.houses[0]; } } }); },
+      capitalizeFirstLetter(string) { return string.charAt(0).toUpperCase() + string.slice(1); },
+      toggleFullscreen() { if (!document.fullscreenElement) { document.documentElement.requestFullscreen().catch(err => { console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`); }); } else { if (document.exitFullscreen) { document.exitFullscreen(); } } },
+      handleFullscreenChange() { this.isFullscreen = !!document.fullscreenElement; },
+      sortBy(key) { if (this.sortKey === key) { this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc'; } else { this.sortKey = key; this.sortOrder = 'asc'; } },
       exportCSV() {
             const headers = Object.values(this.tableHeaders);
             const keys = Object.keys(this.tableHeaders);
-            
-            const data = this.sortedAndFilteredRepairs.map(row => 
-                keys.map(key => {
-                    let val = row[key] || '';
-                    if (typeof val === 'string') {
-                        val = val.replace(/"/g, '""');
-                        if (val.includes(',') || val.includes('\n')) {
-                            val = `"${val}"`;
-                        }
-                    }
-                    return val;
-                }).join(',')
-            );
-            
-            const csvContent = "data:text/csv;charset=utf-8," 
-                + headers.join(',') + "\n" 
-                + data.join('\n');
-            
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            const date = new Date().toISOString().slice(0, 10);
-            link.setAttribute("download", `reparaturen_${date}.csv`);
-            document.body.appendChild(link); 
-            link.click();
-            document.body.removeChild(link);
-      }
+            const data = this.sortedAndFilteredRepairs.map(row => keys.map(key => { let val = row[key] || ''; if (typeof val === 'string') { val = val.replace(/"/g, '""'); if (val.includes(',') || val.includes('\n')) { val = `"${val}"`; } } return val; }).join(','));
+            const csvContent = "data:text/csv;charset=utf-8," + headers.join(',') + "\n" + data.join('\n');
+            const encodedUri = encodeURI(csvContent); const link = document.createElement("a"); link.setAttribute("href", encodedUri); const date = new Date().toISOString().slice(0, 10); link.setAttribute("download", `reparaturen_${date}.csv`); document.body.appendChild(link); link.click(); document.body.removeChild(link);
+      },
+      stopScanner(closeModal = true){ return this.safeStop(closeModal); }
     },
     async mounted(){
       window.addEventListener('online', () => this.isOnline = true);
@@ -1627,15 +1351,10 @@
             this.user = { loggedIn:true, email:u.email, uid:u.uid, isAdmin:false };
             const snap = await getDocs(query(collection(db,'users'), where('email','==',u.email)));
             this.user.isAdmin = !snap.empty ? (snap.docs[0].data().isAdmin || false) : false;
-            
             this.listenToRepairs();
             this.listenToConfig('houses', 'houses');
             this.listenToConfig('technicians', 'technikerList');
             if(this.user.isAdmin) onSnapshot(collection(db,'users'), s => { this.userList = s.docs.map(d => ({ id:d.id, ...d.data() })); });
-
-            if (isMobileDevice) {
-                // Optional: Auto-Fullscreen deaktiviert
-            }
           } else {
             this.user = { loggedIn:false, email:null, uid:null, isAdmin:false };
             this.repairs = []; this.userList = []; this.houses = []; this.technikerList = [];
@@ -1650,9 +1369,7 @@
     }
   };
 
-  document.addEventListener('DOMContentLoaded', () => {
-    createApp(appConfig).mount('#app');
-  });
+  document.addEventListener('DOMContentLoaded', () => { createApp(appConfig).mount('#app'); });
 
 </script>
 </body>
