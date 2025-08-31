@@ -198,6 +198,10 @@
             <label class="block text-sm font-medium text-gray-700">{{ t.ipeiLabel }}</label>
             <div class="relative mt-1">
               <input v-model="newEntry.ipei" type="text" class="block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm pr-10">
+              <button @click="analyzeIpeiHistory" :disabled="isAnalyzing" class="absolute inset-y-0 right-0 flex items-center pr-3" :title="t.analyzeIpeiTooltip">
+                <div v-if="isAnalyzing" class="spinner"></div>
+                <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 hover:text-indigo-600" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7 4a1 1 0 011-1h4a1 1 0 110 2H8a1 1 0 01-1-1zM6 8a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h4a1 1 0 100-2H7zM5 1a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V3a2 2 0 00-2-2H5z" clip-rule="evenodd" /></svg>
+              </button>
             </div>
           </div>
           <div>
@@ -852,7 +856,7 @@
         if (!isShowing) {
             this.cleanupScanner();
         } else {
-            this.$nextTick(() => this.initializeScanner());
+            this.$nextTick(() => this.startScanner());
         }
       },
       zoomLevel() {
