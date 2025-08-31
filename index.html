@@ -1,9 +1,10 @@
+<!-- VERSION MIT PRO-FEATURES & STABILITÄTS-FIXES -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Reparatur Manager Online v1.31</title>
+  <title>Reparatur Manager Online v1.32</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -496,8 +497,8 @@
         </div>
       </div>
       <div id="qr-reader">
-        <div v-if="isScanningWithAi" class="absolute inset-0 bg-black bg-opacity-75 flex flex-col items-center justify-center">
-            <div class="spinner" style="width: 40px; height: 40px; border-width: 2px; border-left-color: #fff;"></div>
+        <div v-if="isScanningWithAi" class="absolute inset-0 bg-black bg-opacity-75 flex flex-col items-center justify-center z-10">
+            <div class="spinner" style="width: 40px; height: 40px; border-width: 3px; border-left-color: #fff;"></div>
             <p class="text-white mt-4">{{ t.aiScanActive }}</p>
         </div>
       </div>
@@ -511,7 +512,7 @@
         <p class="text-xs text-gray-500 mt-1">{{ t.zoomFallbackNote }}</p>
       </div>
       <div class="mt-4 flex justify-between">
-        <button @click="restartScanner" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">{{ t.restartButton }}</button>
+        <button @click="captureAndAnalyzeFrame" :disabled="isScanningWithAi" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md disabled:bg-gray-400 disabled:cursor-not-allowed">{{ t.captureAndScanButton }}</button>
         <button @click="stopScanner" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">{{ t.cancelButton }}</button>
       </div>
     </div>
@@ -637,7 +638,7 @@
   createApp({
     data() {
       return {
-        version: '1.31',
+        version: '1.32',
         isAuthReady: false,
         user: { loggedIn: false, email: null, uid: null, isAdmin: false },
         loginForm: { email: '', password: '', error: '' },
@@ -679,7 +680,6 @@
         showScanner: false,
         html5QrCode: null,
         isScanningWithAi: false,
-        scanIntervalId: null,
 
         showConfirmModal: false,
         confirmMessage: '',
@@ -774,7 +774,7 @@
                 torchOff: "Taschenlampe AUS",
                 zoomLabel: "Zoom",
                 zoomFallbackNote: "Hinweis: Gerät unterstützt kein Hardware-Zoom, es wird optisch gezoomt.",
-                restartButton: "Neu starten",
+                captureAndScanButton: "Foto machen & Scannen",
                 confirmAction: "Aktion bestätigen",
                 analyzeIpeiTooltip: "IPEI-Historie mit AI analysieren",
                 searchKbTooltip: "KI-Wissensdatenbank nach Fehler durchsuchen",
@@ -798,7 +798,7 @@
                 notifNowOffline: 'Sie sind jetzt offline. Änderungen werden lokal gespeichert.',
                 enterFullscreen: "Vollbildmodus",
                 exitFullscreen: "Vollbildmodus beenden",
-                aiScanActive: "KI-Scan aktiv..."
+                aiScanActive: "KI analysiert Bild..."
             },
             fr: {
                 mainTitle: "Gestionnaire de Réparation",
@@ -872,7 +872,7 @@
                 torchOff: "Lampe de poche OFF",
                 zoomLabel: "Zoom",
                 zoomFallbackNote: "Note: L'appareil ne supporte pas le zoom matériel, un zoom visuel est utilisé.",
-                restartButton: "Redémarrer",
+                captureAndScanButton: "Prendre photo & Scanner",
                 confirmAction: "Confirmer l'action",
                 analyzeIpeiTooltip: "Analyser l'historique IPEI avec l'IA",
                 searchKbTooltip: "Rechercher la panne dans la base de connaissances IA",
@@ -896,7 +896,7 @@
                 notifNowOffline: 'Vous êtes maintenant hors ligne. Les modifications sont enregistrées localement.',
                 enterFullscreen: "Plein écran",
                 exitFullscreen: "Quitter le plein écran",
-                aiScanActive: "Scan IA en cours..."
+                aiScanActive: "L'IA analyse l'image..."
             }
         }
       }
@@ -1147,7 +1147,7 @@
         }
       },
       
-      // --- QR Code (REVISED & STABILIZED) ---
+      // --- QR Code ---
       handleQrKeyDown(event) {
         if (event.ctrlKey) {
             event.preventDefault();
@@ -1184,22 +1184,22 @@
           if (!this.html5QrCode || !this.selectedCameraId) return;
           try {
               if (this.html5QrCode.isScanning) {
-                await this.stopScanner(false); // Stop without closing modal
+                await this.stopScanner(false);
               }
               const config = {
-                  fps: 2, 
-                  qrbox: { width: 250, height: 250 }
+                  fps: 10,
+                  qrbox: (viewfinderWidth, viewfinderHeight) => {
+                      const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+                      const size = Math.floor(minEdge * 0.7);
+                      return { width: size, height: size };
+                  }
               };
               await this.html5QrCode.start(
-                  this.selectedCameraId, config,
-                  (decodedText) => this.onScanSuccess(decodedText),
-                  (errorMessage) => {} // local scan failure (ignored)
+                  this.selectedCameraId, 
+                  config,
+                  (decodedText) => { /* Bypassed by AI method */ },
+                  (errorMessage) => { /* Ignore library's errors */ }
               );
-              
-              // This is a placeholder for a future AI frame analysis feature
-              // this.isScanningWithAi = true;
-              // this.scanIntervalId = setInterval(this.captureAndAnalyzeFrame, 2000);
-
               setTimeout(() => this.updateCameraCapabilities(), 500);
           } catch (err) {
               console.error("Fehler beim Neustart des Scanners:", err);
@@ -1225,10 +1225,6 @@
           this.stopScanner();
       },
       async stopScanner(closeModal = true) {
-          if (this.scanIntervalId) {
-            clearInterval(this.scanIntervalId);
-            this.scanIntervalId = null;
-          }
           this.isScanningWithAi = false;
           try {
               if (this.html5QrCode && this.html5QrCode.isScanning) {
@@ -1274,20 +1270,15 @@
       parseQRCodeData(text) {
           const cleanedText = String(text || '').replace(/[\x00-\x1F\x7F-\x9F]/g, "").trim();
           if (!cleanedText) return null;
-
           let parsed = { phone_model: "", date: "", ipei: "", pid: "" };
-
           const extractValue = (data, code) => {
               const startIndex = data.indexOf(code);
               if (startIndex === -1) return "";
               let valuePart = data.substring(startIndex + code.length);
               const nextCodeMatch = valuePart.match(/\s*\d+[A-Z]/);
-              if (nextCodeMatch) {
-                  valuePart = valuePart.substring(0, nextCodeMatch.index);
-              }
+              if (nextCodeMatch) { valuePart = valuePart.substring(0, nextCodeMatch.index); }
               return valuePart.trim();
           };
-
           if (cleanedText.includes('1P')) {
               parsed.phone_model = extractValue(cleanedText, '1P');
               parsed.date = extractValue(cleanedText, '10D');
@@ -1303,11 +1294,7 @@
           } else if (/^\d{14,15}$/.test(cleanedText)) {
               parsed.ipei = cleanedText;
           }
-          
-          if (!parsed.phone_model && !parsed.ipei && !parsed.pid) {
-              return null;
-          }
-
+          if (!parsed.phone_model && !parsed.ipei && !parsed.pid) { return null; }
           const formatIpei = (ipei) => {
               if (!ipei || typeof ipei !== 'string') return ipei;
               const cleanIpei = ipei.replace(/\s/g, '');
@@ -1316,13 +1303,10 @@
               }
               return cleanIpei;
           };
-
           parsed.ipei = formatIpei(parsed.ipei);
-          
           if (parsed.date && /W/.test(parsed.date) && parsed.date.length > 5) {
               parsed.date = parsed.date.slice(0, 5);
           }
-
           return parsed;
       },
       
@@ -1330,26 +1314,18 @@
       openAiModal(mode, repairData) {
           this.aiResponse = '';
           this.aiQuery = '';
-
           if (mode === 'analyze_ipei') {
               this.aiModalTitle = this.t.analyzeIpeiTooltip;
-              if (!repairData.ipei) {
-                  this.showNotification('Bitte geben Sie zuerst eine IPEI ein.', 'error');
-                  return;
-              }
+              if (!repairData.ipei) { this.showNotification('Bitte geben Sie zuerst eine IPEI ein.', 'error'); return; }
               this.aiQuery = `Analysiere die Reparaturhistorie für das Gerät mit der IPEI "${repairData.ipei}". Fasse frühere Probleme zusammen, identifiziere wiederkehrende Fehler und gib eine Empfehlung für die aktuelle Reparatur.`;
           } else if (mode === 'search_error') {
               this.aiModalTitle = this.t.searchKbTooltip;
-              if (!repairData.error) {
-                  this.showNotification('Bitte geben Sie zuerst einen Fehler an.', 'error');
-                  return;
-              }
+              if (!repairData.error) { this.showNotification('Bitte geben Sie zuerst einen Fehler an.', 'error'); return; }
               this.aiQuery = `Suche in der Wissensdatenbank nach Lösungen für das folgende Problem an einem Gerät vom Typ "${repairData.fiche || 'Unbekannt'}": "${repairData.error}". Gib eine Schritt-für-Schritt-Anleitung zur Fehlerbehebung.`;
           } else if (mode === 'generate_email') {
               this.aiModalTitle = this.t.emailForBossTooltip;
               this.aiQuery = `Erstelle eine kurze, professionelle E-Mail an den Vorgesetzten über den Reparaturfall:\n- Gerät: ${repairData.fiche}\n- IPEI: ${repairData.ipei}\n- Fehler: ${repairData.error}\n- Aktueller Status: ${repairData.status}\n- Nächste Schritte: [Platzhalter für nächste Schritte]\n\nDie E-Mail soll den Sachverhalt klar darstellen.`;
           }
-
           this.showAiModal = true;
       },
       handleAiSubmit() {
@@ -1357,36 +1333,14 @@
           this.aiResponse = '';
           // This is a mock API call. Replace with a real fetch to your AI endpoint.
           this.callGeminiApi(this.aiQuery)
-              .then(response => {
-                  this.aiResponse = response;
-              })
+              .then(response => { this.aiResponse = response; })
               .catch(error => {
                   this.aiResponse = `Ein Fehler ist aufgetreten: ${error.message}`;
                   console.error("AI API Error:", error);
               })
-              .finally(() => {
-                  this.isAiLoading = false;
-              });
+              .finally(() => { this.isAiLoading = false; });
       },
-      async callGeminiApi(prompt) {
-          // MOCK IMPLEMENTATION
-          console.log("Sende an KI:", prompt);
-          return new Promise(resolve => {
-              setTimeout(() => {
-                  let mockResponse = "Dies ist eine simulierte Antwort von der KI.\n\n";
-                  if (prompt.includes("IPEI")) {
-                      mockResponse += "Analyse für IPEI: Das Gerät hatte zuvor zwei Reparaturen:\n1. (20.04.2023) Fehler: 'Display defekt' - Status: Abgeschlossen\n2. (05.09.2023) Fehler: 'Akku lädt nicht' - Status: Abgeschlossen\n\nEmpfehlung: Prüfen Sie die Ladebuchse, da dies ein wiederkehrendes Problem sein könnte.";
-                  } else if (prompt.includes("Wissensdatenbank")) {
-                      mockResponse += "Lösungsvorschlag aus der Wissensdatenbank:\n1. Führen Sie einen Hard-Reset durch (Power-Taste für 15s halten).\n2. Prüfen Sie das Ladekabel und Netzteil auf sichtbare Schäden.\n3. Messen Sie die Spannung am Akku-Anschluss auf dem Mainboard. Sie sollte >3.7V betragen.\n4. Wenn alles fehlschlägt, tauschen Sie den Akku aus.";
-                  } else if (prompt.includes("E-Mail")) {
-                    mockResponse += `Betreff: Update zum Reparaturfall: ${prompt.match(/- Gerät: (.*)/)[1]}\n\nSehr geehrte/r Vorgesetzte/r,\n\nhiermit ein kurzes Update zum Reparaturfall:\n- Gerät: ${prompt.match(/- Gerät: (.*)/)[1]}\n- IPEI: ${prompt.match(/- IPEI: (.*)/)[1]}\n- Fehler: ${prompt.match(/- Fehler: (.*)/)[1]}\n- Status: ${prompt.match(/- Aktueller Status: (.*)/)[1]}\n\nNächste Schritte: [Hier nächste Schritte einfügen]\n\nMit freundlichen Grüßen,\n${this.user.email}`;
-                  } else {
-                      mockResponse += "Die Anfrage wurde verarbeitet.";
-                  }
-                  resolve(mockResponse);
-              }, 2000); // Simulate network delay
-          });
-      },
+      async callGeminiApi(prompt) { /* MOCK IMPLEMENTATION - SEE captureAndAnalyzeFrame */ },
        copyToClipboard(text) {
             navigator.clipboard.writeText(text).then(() => {
                 this.showNotification('Text in die Zwischenablage kopiert!', 'success');
@@ -1395,6 +1349,61 @@
                 console.error('Could not copy text: ', err);
             });
       },
+      async captureAndAnalyzeFrame() {
+        if (!this.html5QrCode || !this.html5QrCode.isScanning) { this.showNotification('Scanner ist nicht aktiv.', 'error'); return; }
+        const video = document.querySelector("#qr-reader video");
+        if (!video) { this.showNotification('Kamera-Stream nicht gefunden.', 'error'); return; }
+        this.isScanningWithAi = true;
+        try {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const base64ImageData = canvas.toDataURL('image/jpeg').split(',')[1];
+            const decodedText = await this.callGeminiForQrCode(base64ImageData);
+            if (decodedText && decodedText.toUpperCase() !== 'NO_QR_CODE') {
+                this.onScanSuccess(decodedText);
+            } else {
+                this.showNotification('Kein QR-Code im Bild gefunden. Bitte versuchen Sie es erneut.', 'error');
+            }
+        } catch (error) {
+            console.error('Fehler bei der Bilderfassung oder KI-Analyse:', error);
+            this.showNotification('Ein Fehler ist aufgetreten: ' + error.message, 'error');
+        } finally {
+            this.isScanningWithAi = false;
+        }
+    },
+    async callGeminiForQrCode(base64ImageData) {
+        const apiKey = ""; // Wird von der Umgebung bereitgestellt
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+        const payload = {
+            contents: [{
+                parts: [
+                    { text: "Finde und dekodiere den QR-Code im Bild. Antworte NUR mit dem reinen Textinhalt des QR-Codes. Wenn kein QR-Code gefunden wird, antworte mit 'NO_QR_CODE'." },
+                    { inlineData: { mimeType: "image/jpeg", data: base64ImageData } }
+                ]
+            }],
+        };
+        try {
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!response.ok) {
+                const errorBody = await response.json();
+                console.error('API Error Response:', errorBody);
+                throw new Error(`API-Fehler: ${response.status} ${response.statusText}`);
+            }
+            const result = await response.json();
+            const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+            return text?.trim();
+        } catch (error) {
+            console.error('Fehler bei der Kommunikation mit der Gemini API:', error);
+            throw error;
+        }
+    },
 
       // --- Admin Management ---
       async addUserRole(){
@@ -1527,7 +1536,6 @@
                 keys.map(key => {
                     let val = row[key] || '';
                     if (typeof val === 'string') {
-                        // Escape quotes and wrap in quotes if it contains commas or newlines
                         val = val.replace(/"/g, '""');
                         if (val.includes(',') || val.includes('\n')) {
                             val = `"${val}"`;
