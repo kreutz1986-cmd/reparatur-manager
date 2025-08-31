@@ -4,88 +4,88 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Reparatur Manager Online v1.30</title>
+  <title>Reparatur Manager Online v1.31</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <style>
-     body { font-family: 'Inter', sans-serif; }
-     [v-cloak] { display: none; }
+      body { font-family: 'Inter', sans-serif; }
+      [v-cloak] { display: none; }
 
-     .modal-backdrop { position: fixed; inset: 0; display: flex; justify-content: center; align-items: center; background-color: rgba(0,0,0,.5); z-index: 50; padding: 1rem; }
-     .modal-content { background: #fff; padding: 2rem; border-radius: .5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -2px rgba(0,0,0,.05); width: 90%; max-width: 640px; max-height: 90vh; overflow-y: auto; }
-     .table-row-selected { background-color: #eef2ff; }
-     .table-row-urgent { background-color: #fee2e2; }
+      .modal-backdrop { position: fixed; inset: 0; display: flex; justify-content: center; align-items: center; background-color: rgba(0,0,0,.5); z-index: 50; padding: 1rem; }
+      .modal-content { background: #fff; padding: 2rem; border-radius: .5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -2px rgba(0,0,0,.05); width: 90%; max-width: 640px; max-height: 90vh; overflow-y: auto; }
+      .table-row-selected { background-color: #eef2ff; }
+      .table-row-urgent { background-color: #fee2e2; }
 
-     /* QR Scanner Fixes for PC Zoom */
-     #qr-reader { width: 100%; max-width: 560px; border: 2px solid #4f46e5; border-radius: .5rem; overflow: hidden; transform: scale(1) !important; position: relative; }
-     #qr-reader video { max-width: 100%; will-change: transform; background:#000; object-fit: cover; }
+      /* QR Scanner Fixes for PC Zoom */
+      #qr-reader { width: 100%; max-width: 560px; border: 2px solid #4f46e5; border-radius: .5rem; overflow: hidden; transform: scale(1) !important; position: relative; }
+      #qr-reader video { max-width: 100%; will-change: transform; background:#000; object-fit: cover; }
 
-     .spinner { border: 2px solid rgba(0, 0, 0, 0.1); width: 20px; height: 20px; border-radius: 50%; border-left-color: #4f46e5; animation: spin 1s ease infinite; }
-     
-     /* Toast Notifications */
-     .toast-container { position: fixed; top: 1.5rem; right: 1.5rem; z-index: 100; display: flex; flex-direction: column; gap: 0.75rem; }
-     .toast { display: flex; align-items: center; padding: 1rem; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -1px rgba(0,0,0,.06); transform: translateX(100%); opacity: 0; transition: all 0.3s ease-in-out; }
-     .toast.show { transform: translateX(0); opacity: 1; }
-     .toast-info { background-color: #3b82f6; color: white; }
-     .toast-success { background-color: #22c55e; color: white; }
-     .toast-error { background-color: #ef4444; color: white; }
+      .spinner { border: 4px solid rgba(0, 0, 0, 0.1); width: 36px; height: 36px; border-radius: 50%; border-left-color: #4f46e5; animation: spin 1s ease infinite; }
+      
+      /* Toast Notifications */
+      .toast-container { position: fixed; top: 1.5rem; right: 1.5rem; z-index: 100; display: flex; flex-direction: column; gap: 0.75rem; }
+      .toast { display: flex; align-items: center; padding: 1rem; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -1px rgba(0,0,0,.06); transform: translateX(100%); opacity: 0; transition: all 0.3s ease-in-out; }
+      .toast.show { transform: translateX(0); opacity: 1; }
+      .toast-info { background-color: #3b82f6; color: white; }
+      .toast-success { background-color: #22c55e; color: white; }
+      .toast-error { background-color: #ef4444; color: white; }
 
-     /* New, improved Fallout Loader */
-     .fallout-loader {
-       display: flex;
-       flex-direction: column;
-       justify-content: center;
-       align-items: center;
-       height: 100vh;
-       background-color: #0d1a26;
-       font-family: 'Roboto Mono', monospace;
-       overflow: hidden;
-     }
-     .vault-logo {
-       width: 200px;
-       height: 200px;
-       border-radius: 50%;
-       background: radial-gradient(circle, #003c5a 0%, #00283c 100%);
-       border: 10px solid #005a87;
-       display: flex;
-       justify-content: center;
-       align-items: center;
-       box-shadow: 0 0 30px rgba(0, 191, 255, 0.5), inset 0 0 20px rgba(0,0,0,0.7);
-       position: relative;
-     }
-     .vault-gear {
-       width: 180px;
-       height: 180px;
-       position: absolute;
-       background-image: 
-         radial-gradient(circle, transparent 60%, #0077b3 61%, #0077b3 65%, transparent 66%),
-         repeating-conic-gradient(#0077b3 0% 5%, transparent 5% 10%);
-       -webkit-mask-image: radial-gradient(circle, transparent 60%, black 61%);
-       mask-image: radial-gradient(circle, transparent 60%, black 61%);
-       animation: spin 10s linear infinite;
-     }
-     .vault-number {
-       font-size: 4rem;
-       font-weight: 700;
-       color: #ffc107;
-       text-shadow: 0 0 10px #ffc107, 0 0 20px #ff8f00;
-       z-index: 10;
-     }
-     .loading-text {
-       margin-top: 2rem;
-       color: #00bfff;
-       font-size: 1.125rem;
-       letter-spacing: 0.2em;
-       text-shadow: 0 0 5px #00bfff, 0 0 10px #00bfff;
-       animation: blink 1.5s linear infinite;
-     }
-     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-     @keyframes blink { 50% { opacity: 0.5; } }
-     th { cursor: pointer; user-select: none; }
-     th .sort-icon { opacity: 0.3; }
-     th.active .sort-icon { opacity: 1; }
+      /* New, improved Fallout Loader */
+      .fallout-loader {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background-color: #0d1a26;
+        font-family: 'Roboto Mono', monospace;
+        overflow: hidden;
+      }
+      .vault-logo {
+        width: 200px;
+        height: 200px;
+        border-radius: 50%;
+        background: radial-gradient(circle, #003c5a 0%, #00283c 100%);
+        border: 10px solid #005a87;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        box-shadow: 0 0 30px rgba(0, 191, 255, 0.5), inset 0 0 20px rgba(0,0,0,0.7);
+        position: relative;
+      }
+      .vault-gear {
+        width: 180px;
+        height: 180px;
+        position: absolute;
+        background-image: 
+          radial-gradient(circle, transparent 60%, #0077b3 61%, #0077b3 65%, transparent 66%),
+          repeating-conic-gradient(#0077b3 0% 5%, transparent 5% 10%);
+        -webkit-mask-image: radial-gradient(circle, transparent 60%, black 61%);
+        mask-image: radial-gradient(circle, transparent 60%, black 61%);
+        animation: spin 10s linear infinite;
+      }
+      .vault-number {
+        font-size: 4rem;
+        font-weight: 700;
+        color: #ffc107;
+        text-shadow: 0 0 10px #ffc107, 0 0 20px #ff8f00;
+        z-index: 10;
+      }
+      .loading-text {
+        margin-top: 2rem;
+        color: #00bfff;
+        font-size: 1.125rem;
+        letter-spacing: 0.2em;
+        text-shadow: 0 0 5px #00bfff, 0 0 10px #00bfff;
+        animation: blink 1.5s linear infinite;
+      }
+      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+      @keyframes blink { 50% { opacity: 0.5; } }
+      th { cursor: pointer; user-select: none; }
+      th .sort-icon { opacity: 0.3; }
+      th.active .sort-icon { opacity: 1; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -198,6 +198,11 @@
             <label class="block text-sm font-medium text-gray-700">{{ t.ipeiLabel }}</label>
             <div class="relative mt-1">
               <input v-model="newEntry.ipei" type="text" class="block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm pr-10">
+               <div class="absolute inset-y-0 right-0 flex items-center pr-3">
+                 <button @click.prevent="openAiModal('analyze_ipei', newEntry)" type="button" class="text-gray-400 hover:text-indigo-600" :title="t.analyzeIpeiTooltip">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"></path><path d="M5 3v4"></path><path d="M19 17v4"></path><path d="M3 5h4"></path><path d="M17 19h4"></path></svg>
+                </button>
+              </div>
             </div>
           </div>
           <div>
@@ -206,7 +211,12 @@
           </div>
           <div class="relative">
             <label class="block text-sm font-medium text-gray-700">{{ t.errorLabel }}</label>
-            <input v-model="newEntry.error" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            <input v-model="newEntry.error" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm pr-10">
+             <div class="absolute inset-y-0 right-0 top-6 flex items-center pr-3">
+                 <button @click.prevent="openAiModal('search_error', newEntry)" type="button" class="text-gray-400 hover:text-indigo-600" :title="t.searchKbTooltip">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                </button>
+            </div>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700">{{ t.statusLabel }}</label>
@@ -286,8 +296,11 @@
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm">{{ repair.techniker || '---' }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button @click="editRepair(repair)" class="text-indigo-600 hover:text-indigo-900 ml-4">{{ t.editButton }}</button>
-                  <button @click="confirmDelete('repair', repair)" class="text-red-600 hover:text-red-900 ml-4">{{ t.deleteButton }}</button>
+                    <button @click="openAiModal('generate_email', repair)" class="text-gray-500 hover:text-indigo-600 inline-block align-middle" :title="t.emailForBossTooltip">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" /><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" /></svg>
+                    </button>
+                    <button @click="editRepair(repair)" class="text-indigo-600 hover:text-indigo-900 ml-4 inline-block align-middle">{{ t.editButton }}</button>
+                    <button @click="confirmDelete('repair', repair)" class="text-red-600 hover:text-red-900 ml-4 inline-block align-middle">{{ t.deleteButton }}</button>
                 </td>
               </tr>
             </tbody>
@@ -365,9 +378,29 @@
         <div><label class="block text-sm font-medium text-gray-700">{{ t.dateLabel }}</label><input v-model="currentEdit.date" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></div>
         <div><label class="block text-sm font-medium text-gray-700">{{ t.deviceLabel }}</label><input v-model="currentEdit.fiche" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></div>
         <div><label class="block text-sm font-medium text-gray-700">{{ t.engagementLabel }}</label><input v-model="currentEdit.fiche_engagement" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></div>
-        <div><label class="block text-sm font-medium text-gray-700">{{ t.ipeiLabel }}</label><input v-model="currentEdit.ipei" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700">{{ t.ipeiLabel }}</label>
+            <div class="relative mt-1">
+                <input v-model="currentEdit.ipei" type="text" class="block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm pr-10">
+                <div class="absolute inset-y-0 right-0 flex items-center pr-3">
+                    <button @click.prevent="openAiModal('analyze_ipei', currentEdit)" type="button" class="text-gray-400 hover:text-indigo-600" :title="t.analyzeIpeiTooltip">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"></path><path d="M5 3v4"></path><path d="M19 17v4"></path><path d="M3 5h4"></path><path d="M17 19h4"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
         <div><label class="block text-sm font-medium text-gray-700">{{ t.pidLabel }}</label><input v-model="currentEdit.pid" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></div>
-        <div><label class="block text-sm font-medium text-gray-700">{{ t.errorLabel }}</label><input v-model="currentEdit.error" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700">{{ t.errorLabel }}</label>
+            <div class="relative mt-1">
+                <input v-model="currentEdit.error" type="text" class="block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm pr-10">
+                <div class="absolute inset-y-0 right-0 flex items-center pr-3">
+                     <button @click.prevent="openAiModal('search_error', currentEdit)" type="button" class="text-gray-400 hover:text-indigo-600" :title="t.searchKbTooltip">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
         <div><label class="block text-sm font-medium text-gray-700">{{ t.statusLabel }}</label><select v-model="currentEdit.status" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"><option>{{ t.statusOpen }}</option><option>{{ t.statusInProgress }}</option><option>{{ t.statusCompleted }}</option><option>{{ t.statusCompletedAtCustomer }}</option></select></div>
         <div><label class="block text-sm font-medium text-gray-700">{{ t.assignTechnicianLabel }}</label><select v-model="currentEdit.techniker" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"><option value="">{{ t.noOne }}</option><option v-for="techniker in technikerList" :key="techniker" :value="techniker">{{ techniker }}</option></select></div>
       </div>
@@ -465,7 +498,7 @@
       </div>
       <div id="qr-reader">
         <div v-if="isScanningWithAi" class="absolute inset-0 bg-black bg-opacity-75 flex flex-col items-center justify-center">
-            <div class="spinner" style="width: 40px; height: 40px; border-left-color: #fff;"></div>
+            <div class="spinner" style="width: 40px; height: 40px; border-width: 2px; border-left-color: #fff;"></div>
             <p class="text-white mt-4">{{ t.aiScanActive }}</p>
         </div>
       </div>
@@ -500,6 +533,38 @@
         </div>
     </div>
   </div>
+
+  <!-- AI Modal -->
+    <div v-if="showAiModal" class="modal-backdrop">
+        <div class="modal-content">
+            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">{{ aiModalTitle }}</h3>
+            
+            <div v-if="isAiLoading" class="flex justify-center items-center py-10">
+                <div class="spinner"></div>
+            </div>
+
+            <div v-else>
+                <div v-if="!aiResponse">
+                    <p class="text-sm text-gray-600 mb-2">Die folgende Anfrage wird an die KI gesendet. Sie können sie vor dem Senden anpassen.</p>
+                    <textarea v-model="aiQuery" rows="6" class="w-full p-2 border rounded-md font-mono text-sm bg-gray-50"></textarea>
+                </div>
+
+                <div v-if="aiResponse">
+                    <h4 class="font-semibold text-gray-800 mb-2">Antwort der KI:</h4>
+                    <div class="p-3 bg-gray-100 rounded-md max-h-64 overflow-y-auto border">
+                        <pre class="whitespace-pre-wrap text-sm text-gray-800">{{ aiResponse }}</pre>
+                    </div>
+                     <button @click="copyToClipboard(aiResponse)" class="mt-2 text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 py-1 px-3 rounded-md">Text kopieren</button>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end space-x-3">
+                <button @click="showAiModal = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">{{ t.closeButton }}</button>
+                <button v-if="!aiResponse && !isAiLoading" @click="handleAiSubmit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md">Anfrage senden</button>
+            </div>
+        </div>
+    </div>
+
 
   <!-- Toast Notifications Container -->
   <div class="toast-container">
@@ -573,7 +638,7 @@
   createApp({
     data() {
       return {
-        version: '1.30',
+        version: '1.31',
         isAuthReady: false,
         user: { loggedIn: false, email: null, uid: null, isAdmin: false },
         loginForm: { email: '', password: '', error: '' },
@@ -583,7 +648,7 @@
 
         repairs: [],
         houses: [],
-        technikerList: ['Simon', 'Pascal', 'Mirco', 'Sead', 'Thomas'],
+        technikerList: [],
         newEntry: { house: '', captured_at: new Date().toISOString().slice(0,10), date: '', fiche: '', fiche_engagement: '', ipei: '', pid: '', error: '', status: 'Offen', comments: [], techniker: '' },
         
         qrCodeInput: '', qrScanTimer: null,
@@ -626,6 +691,13 @@
         // Dashboard
         allRepairsForStats: [],
 
+        // AI Features
+        showAiModal: false,
+        aiModalTitle: '',
+        aiQuery: '',
+        aiResponse: '',
+        isAiLoading: false,
+
         // Internationalization (i18n)
         currentLanguage: 'de',
         isOnline: navigator.onLine,
@@ -662,15 +734,10 @@
                 all: "Alle",
                 searchLabel: "Suche:",
                 searchPlaceholder: "Suchen...",
-                emailForSelected: (count) => `E-Mail für ${count} Markierte`,
-                monthlyReport: "Monatsbericht",
                 tableHeaders: { house: 'Haus', captured_at: 'Erfasst am', fiche: 'Gerät', error: 'Fehler', ipei: 'IPEI', status: 'Status', techniker: 'Techniker' },
                 actions: "Aktionen",
                 editButton: "Bearbeiten",
                 deleteButton: "Löschen",
-                loadMore: "Mehr laden",
-                loadingMore: "Lade...",
-                allEntriesLoaded: "Alle Einträge geladen.",
                 statusOpen: "Offen",
                 statusInProgress: "In Bearbeitung",
                 statusCompleted: "Abgeschlossen",
@@ -709,10 +776,9 @@
                 zoomLabel: "Zoom",
                 zoomFallbackNote: "Hinweis: Gerät unterstützt kein Hardware-Zoom, es wird optisch gezoomt.",
                 restartButton: "Neu starten",
-                aiKnowledgeBase: "KI-Wissensdatenbank",
                 confirmAction: "Aktion bestätigen",
                 analyzeIpeiTooltip: "IPEI-Historie mit AI analysieren",
-                searchKbTooltip: "KI-Wissensdatenbank durchsuchen",
+                searchKbTooltip: "KI-Wissensdatenbank nach Fehler durchsuchen",
                 emailForBossTooltip: "KI E-Mail für Chef erstellen",
                 notifRepairAdded: "Reparatur erfolgreich hinzugefügt.",
                 notifConfirmDelete: (item) => `Möchten Sie den Reparatureintrag für "${item}" wirklich löschen?`,
@@ -731,7 +797,6 @@
                 notifCommentEmpty: 'Kommentar darf nicht leer sein.',
                 notifNowOnline: 'Sie sind wieder online. Daten werden synchronisiert.',
                 notifNowOffline: 'Sie sind jetzt offline. Änderungen werden lokal gespeichert.',
-                aiSuggestions: "KI-Vorschläge",
                 enterFullscreen: "Vollbildmodus",
                 exitFullscreen: "Vollbildmodus beenden",
                 aiScanActive: "KI-Scan aktiv..."
@@ -767,15 +832,10 @@
                 all: "Tous",
                 searchLabel: "Recherche:",
                 searchPlaceholder: "Rechercher...",
-                emailForSelected: (count) => `E-mail pour ${count} sélectionnés`,
-                monthlyReport: "Rapport mensuel",
                 tableHeaders: { house: 'Site', captured_at: 'Enregistré le', fiche: 'Appareil', error: 'Panne', ipei: 'IPEI', status: 'Statut', techniker: 'Technicien' },
                 actions: "Actions",
                 editButton: "Modifier",
                 deleteButton: "Supprimer",
-                loadMore: "Charger plus",
-                loadingMore: "Chargement...",
-                allEntriesLoaded: "Toutes les entrées sont chargées.",
                 statusOpen: "Ouvert",
                 statusInProgress: "En cours",
                 statusCompleted: "Terminé",
@@ -814,10 +874,9 @@
                 zoomLabel: "Zoom",
                 zoomFallbackNote: "Note: L'appareil ne supporte pas le zoom matériel, un zoom visuel est utilisé.",
                 restartButton: "Redémarrer",
-                aiKnowledgeBase: "Base de connaissances IA",
                 confirmAction: "Confirmer l'action",
                 analyzeIpeiTooltip: "Analyser l'historique IPEI avec l'IA",
-                searchKbTooltip: "Rechercher dans la base de connaissances IA",
+                searchKbTooltip: "Rechercher la panne dans la base de connaissances IA",
                 emailForBossTooltip: "Créer un e-mail pour le chef avec l'IA",
                 notifRepairAdded: "Réparation ajoutée avec succès.",
                 notifConfirmDelete: (item) => `Voulez-vous vraiment supprimer l'entrée de réparation pour "${item}"?`,
@@ -836,7 +895,6 @@
                 notifCommentEmpty: 'Le commentaire ne peut pas être vide.',
                 notifNowOnline: 'Vous êtes de nouveau en ligne. Les données sont en cours de synchronisation.',
                 notifNowOffline: 'Vous êtes maintenant hors ligne. Les modifications sont enregistrées localement.',
-                aiSuggestions: "Suggestions de l'IA",
                 enterFullscreen: "Plein écran",
                 exitFullscreen: "Quitter le plein écran",
                 aiScanActive: "Scan IA en cours..."
@@ -902,7 +960,6 @@
                 let valA = a[this.sortKey];
                 let valB = b[this.sortKey];
                 
-                // Handle potential undefined values for sorting
                 if (valA === undefined || valA === null) valA = '';
                 if (valB === undefined || valB === null) valB = '';
 
@@ -1113,9 +1170,9 @@
                       this.selectedCameraId = rearCamera ? rearCamera.id : devices[0].id;
                   }
               } else {
-                   this.showNotification(this.t.notifNoCamera, 'error');
-                   this.showScanner = false;
-                   return;
+                  this.showNotification(this.t.notifNoCamera, 'error');
+                  this.showScanner = false;
+                  return;
               }
               this.restartScanner();
           } catch (err) {
@@ -1136,13 +1193,13 @@
               };
               await this.html5QrCode.start(
                   this.selectedCameraId, config,
-                  (decodedText) => {}, // local scan success (disabled)
-                  (errorMessage) => {}  // local scan failure (ignored)
+                  (decodedText) => this.onScanSuccess(decodedText),
+                  (errorMessage) => {} // local scan failure (ignored)
               );
               
-              // Start AI scanning immediately
-              this.isScanningWithAi = true;
-              this.scanIntervalId = setInterval(this.captureAndAnalyzeFrame, 2000);
+              // This is a placeholder for a future AI frame analysis feature
+              // this.isScanningWithAi = true;
+              // this.scanIntervalId = setInterval(this.captureAndAnalyzeFrame, 2000);
 
               setTimeout(() => this.updateCameraCapabilities(), 500);
           } catch (err) {
@@ -1269,6 +1326,76 @@
 
           return parsed;
       },
+      
+      // --- AI Methods ---
+      openAiModal(mode, repairData) {
+          this.aiResponse = '';
+          this.aiQuery = '';
+
+          if (mode === 'analyze_ipei') {
+              this.aiModalTitle = this.t.analyzeIpeiTooltip;
+              if (!repairData.ipei) {
+                  this.showNotification('Bitte geben Sie zuerst eine IPEI ein.', 'error');
+                  return;
+              }
+              this.aiQuery = `Analysiere die Reparaturhistorie für das Gerät mit der IPEI "${repairData.ipei}". Fasse frühere Probleme zusammen, identifiziere wiederkehrende Fehler und gib eine Empfehlung für die aktuelle Reparatur.`;
+          } else if (mode === 'search_error') {
+              this.aiModalTitle = this.t.searchKbTooltip;
+              if (!repairData.error) {
+                  this.showNotification('Bitte geben Sie zuerst einen Fehler an.', 'error');
+                  return;
+              }
+              this.aiQuery = `Suche in der Wissensdatenbank nach Lösungen für das folgende Problem an einem Gerät vom Typ "${repairData.fiche || 'Unbekannt'}": "${repairData.error}". Gib eine Schritt-für-Schritt-Anleitung zur Fehlerbehebung.`;
+          } else if (mode === 'generate_email') {
+              this.aiModalTitle = this.t.emailForBossTooltip;
+              this.aiQuery = `Erstelle eine kurze, professionelle E-Mail an den Vorgesetzten über den Reparaturfall:\n- Gerät: ${repairData.fiche}\n- IPEI: ${repairData.ipei}\n- Fehler: ${repairData.error}\n- Aktueller Status: ${repairData.status}\n- Nächste Schritte: [Platzhalter für nächste Schritte]\n\nDie E-Mail soll den Sachverhalt klar darstellen.`;
+          }
+
+          this.showAiModal = true;
+      },
+      handleAiSubmit() {
+          this.isAiLoading = true;
+          this.aiResponse = '';
+          // This is a mock API call. Replace with a real fetch to your AI endpoint.
+          this.callGeminiApi(this.aiQuery)
+              .then(response => {
+                  this.aiResponse = response;
+              })
+              .catch(error => {
+                  this.aiResponse = `Ein Fehler ist aufgetreten: ${error.message}`;
+                  console.error("AI API Error:", error);
+              })
+              .finally(() => {
+                  this.isAiLoading = false;
+              });
+      },
+      async callGeminiApi(prompt) {
+          // MOCK IMPLEMENTATION
+          console.log("Sende an KI:", prompt);
+          return new Promise(resolve => {
+              setTimeout(() => {
+                  let mockResponse = "Dies ist eine simulierte Antwort von der KI.\n\n";
+                  if (prompt.includes("IPEI")) {
+                      mockResponse += "Analyse für IPEI: Das Gerät hatte zuvor zwei Reparaturen:\n1. (20.04.2023) Fehler: 'Display defekt' - Status: Abgeschlossen\n2. (05.09.2023) Fehler: 'Akku lädt nicht' - Status: Abgeschlossen\n\nEmpfehlung: Prüfen Sie die Ladebuchse, da dies ein wiederkehrendes Problem sein könnte.";
+                  } else if (prompt.includes("Wissensdatenbank")) {
+                      mockResponse += "Lösungsvorschlag aus der Wissensdatenbank:\n1. Führen Sie einen Hard-Reset durch (Power-Taste für 15s halten).\n2. Prüfen Sie das Ladekabel und Netzteil auf sichtbare Schäden.\n3. Messen Sie die Spannung am Akku-Anschluss auf dem Mainboard. Sie sollte >3.7V betragen.\n4. Wenn alles fehlschlägt, tauschen Sie den Akku aus.";
+                  } else if (prompt.includes("E-Mail")) {
+                    mockResponse += `Betreff: Update zum Reparaturfall: ${prompt.match(/- Gerät: (.*)/)[1]}\n\nSehr geehrte/r Vorgesetzte/r,\n\nhiermit ein kurzes Update zum Reparaturfall:\n- Gerät: ${prompt.match(/- Gerät: (.*)/)[1]}\n- IPEI: ${prompt.match(/- IPEI: (.*)/)[1]}\n- Fehler: ${prompt.match(/- Fehler: (.*)/)[1]}\n- Status: ${prompt.match(/- Aktueller Status: (.*)/)[1]}\n\nNächste Schritte: [Hier nächste Schritte einfügen]\n\nMit freundlichen Grüßen,\n${this.user.email}`;
+                  } else {
+                      mockResponse += "Die Anfrage wurde verarbeitet.";
+                  }
+                  resolve(mockResponse);
+              }, 2000); // Simulate network delay
+          });
+      },
+       copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                this.showNotification('Text in die Zwischenablage kopiert!', 'success');
+            }, (err) => {
+                this.showNotification('Fehler beim Kopieren.', 'error');
+                console.error('Could not copy text: ', err);
+            });
+      },
 
       // --- Admin Management ---
       async addUserRole(){
@@ -1392,6 +1519,37 @@
             this.sortKey = key;
             this.sortOrder = 'asc';
         }
+      },
+      exportCSV() {
+            const headers = Object.values(this.tableHeaders);
+            const keys = Object.keys(this.tableHeaders);
+            
+            const data = this.sortedAndFilteredRepairs.map(row => 
+                keys.map(key => {
+                    let val = row[key] || '';
+                    if (typeof val === 'string') {
+                        // Escape quotes and wrap in quotes if it contains commas or newlines
+                        val = val.replace(/"/g, '""');
+                        if (val.includes(',') || val.includes('\n')) {
+                            val = `"${val}"`;
+                        }
+                    }
+                    return val;
+                }).join(',')
+            );
+            
+            const csvContent = "data:text/csv;charset=utf-8," 
+                + headers.join(',') + "\n" 
+                + data.join('\n');
+            
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            const date = new Date().toISOString().slice(0, 10);
+            link.setAttribute("download", `reparaturen_${date}.csv`);
+            document.body.appendChild(link); 
+            link.click();
+            document.body.removeChild(link);
       }
     },
     async mounted(){
@@ -1412,7 +1570,7 @@
             if(this.user.isAdmin) onSnapshot(collection(db,'users'), s => { this.userList = s.docs.map(d => ({ id:d.id, ...d.data() })); });
 
             if (isMobileDevice) {
-                this.toggleFullscreen();
+                // this.toggleFullscreen(); // Deactivated for now, can cause issues
             }
           } else {
             this.user = { loggedIn:false, email:null, uid:null, isAdmin:false };
@@ -1422,7 +1580,7 @@
         });
       });
 
-      const minDelay = new Promise(resolve => setTimeout(resolve, 1500)); // Reduced delay
+      const minDelay = new Promise(resolve => setTimeout(resolve, 1500));
       await Promise.all([authCheck, minDelay]);
       this.isAuthReady = true;
     }
@@ -1430,4 +1588,3 @@
 </script>
 </body>
 </html>
-
