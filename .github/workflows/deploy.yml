@@ -1,0 +1,27 @@
+# Name des Workflows, der in der "Actions"-Übersicht auf GitHub angezeigt wird
+name: Deploy to Firebase Hosting on Push
+
+# Dieses Ereignis löst den Workflow aus
+on:
+  push:
+    branches:
+      - main  # Der Workflow startet nur bei Änderungen im "main"-Branch
+
+# Definiert die Aufgaben, die ausgeführt werden sollen
+jobs:
+  deploy:
+    # Der Typ der virtuellen Maschine, auf der der Code ausgeführt wird
+    runs-on: ubuntu-latest
+    steps:
+      # Schritt 1: Das Repository auf die virtuelle Maschine kopieren
+      - name: Checkout the repository
+        uses: actions/checkout@v3
+
+      # Schritt 2: Die Firebase Kommandozeilen-Tools installieren
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      # Schritt 3: Den Deployment-Befehl ausführen
+      - name: Deploy to Firebase Hosting
+        run: |
+          firebase deploy --token "${{ secrets.FIREBASE_TOKEN }}" --project reparatur-manager-ells
