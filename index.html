@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Reparatur Manager Online v1.32</title>
+  <title>Reparatur Manager Online v1.33</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -535,35 +535,27 @@
   </div>
 
   <!-- AI Modal -->
-    <div v-if="showAiModal" class="modal-backdrop">
-        <div class="modal-content">
-            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">{{ aiModalTitle }}</h3>
-            
-            <div v-if="isAiLoading" class="flex justify-center items-center py-10">
-                <div class="spinner"></div>
-            </div>
+  <div v-if="showAiModal" class="modal-backdrop">
+      <div class="modal-content">
+          <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">{{ aiModalTitle }}</h3>
+          
+          <div v-if="isAiLoading" class="flex justify-center items-center py-10">
+              <div class="spinner"></div>
+          </div>
 
-            <div v-else>
-                <div v-if="!aiResponse">
-                    <p class="text-sm text-gray-600 mb-2">Die folgende Anfrage wird an die KI gesendet. Sie können sie vor dem Senden anpassen.</p>
-                    <textarea v-model="aiQuery" rows="6" class="w-full p-2 border rounded-md font-mono text-sm bg-gray-50"></textarea>
-                </div>
+          <div v-else-if="aiResponse">
+              <h4 class="font-semibold text-gray-800 mb-2">Antwort der KI:</h4>
+              <div class="p-3 bg-gray-100 rounded-md max-h-64 overflow-y-auto border">
+                  <pre class="whitespace-pre-wrap text-sm text-gray-800">{{ aiResponse }}</pre>
+              </div>
+              <button @click="copyToClipboard(aiResponse)" class="mt-2 text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 py-1 px-3 rounded-md">Text kopieren</button>
+          </div>
 
-                <div v-if="aiResponse">
-                    <h4 class="font-semibold text-gray-800 mb-2">Antwort der KI:</h4>
-                    <div class="p-3 bg-gray-100 rounded-md max-h-64 overflow-y-auto border">
-                        <pre class="whitespace-pre-wrap text-sm text-gray-800">{{ aiResponse }}</pre>
-                    </div>
-                     <button @click="copyToClipboard(aiResponse)" class="mt-2 text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 py-1 px-3 rounded-md">Text kopieren</button>
-                </div>
-            </div>
-
-            <div class="mt-6 flex justify-end space-x-3">
-                <button @click="showAiModal = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">{{ t.closeButton }}</button>
-                <button v-if="!aiResponse && !isAiLoading" @click="handleAiSubmit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md">Anfrage senden</button>
-            </div>
-        </div>
-    </div>
+          <div class="mt-6 flex justify-end space-x-3">
+              <button @click="showAiModal = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">{{ t.closeButton }}</button>
+          </div>
+      </div>
+  </div>
 
 
   <!-- Toast Notifications Container -->
@@ -1326,12 +1318,10 @@
               this.aiModalTitle = this.t.emailForBossTooltip;
               this.aiQuery = `Erstelle eine kurze, professionelle E-Mail an den Vorgesetzten über den Reparaturfall:\n- Gerät: ${repairData.fiche}\n- IPEI: ${repairData.ipei}\n- Fehler: ${repairData.error}\n- Aktueller Status: ${repairData.status}\n- Nächste Schritte: [Platzhalter für nächste Schritte]\n\nDie E-Mail soll den Sachverhalt klar darstellen.`;
           }
+          
           this.showAiModal = true;
-      },
-      handleAiSubmit() {
           this.isAiLoading = true;
-          this.aiResponse = '';
-          // This is a mock API call. Replace with a real fetch to your AI endpoint.
+
           this.callGeminiApi(this.aiQuery)
               .then(response => { this.aiResponse = response; })
               .catch(error => {
@@ -1368,6 +1358,13 @@
         if (!this.html5QrCode || !this.html5QrCode.isScanning) { this.showNotification('Scanner ist nicht aktiv.', 'error'); return; }
         const video = document.querySelector("#qr-reader video");
         if (!video) { this.showNotification('Kamera-Stream nicht gefunden.', 'error'); return; }
+
+        // NEUE PRÜFUNG: Sicherstellen, dass die Kameradaten geladen sind, bevor ein Foto gemacht wird.
+        if (video.readyState < video.HAVE_METADATA || video.videoWidth === 0) {
+            this.showNotification('Kamera ist noch nicht ganz bereit. Bitte warten Sie einen Moment und versuchen Sie es erneut.', 'error');
+            return;
+        }
+
         this.isScanningWithAi = true;
         try {
             const canvas = document.createElement('canvas');
