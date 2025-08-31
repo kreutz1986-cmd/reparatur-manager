@@ -635,7 +635,7 @@
     return { name, code: codeOnly || compact };
   }
 
-  createApp({
+  const appConfig = {
     data() {
       return {
         version: '1.32',
@@ -1340,14 +1340,29 @@
               })
               .finally(() => { this.isAiLoading = false; });
       },
-      async callGeminiApi(prompt) { /* MOCK IMPLEMENTATION - SEE captureAndAnalyzeFrame */ },
+      async callGeminiApi(prompt) { 
+        // Dies ist eine MOCK-Implementierung für die textbasierten KI-Anfragen.
+        console.log("Simulating Gemini API call with prompt:", prompt);
+        return new Promise(resolve => {
+            setTimeout(() => {
+                resolve("Dies ist eine simulierte KI-Antwort. Die echte API-Integration für Text-Prompts muss noch implementiert werden.");
+            }, 1000);
+        });
+      },
        copyToClipboard(text) {
-            navigator.clipboard.writeText(text).then(() => {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
                 this.showNotification('Text in die Zwischenablage kopiert!', 'success');
-            }, (err) => {
+            } catch (err) {
                 this.showNotification('Fehler beim Kopieren.', 'error');
-                console.error('Could not copy text: ', err);
-            });
+                console.error('Fallback: Oops, unable to copy', err);
+            }
+            document.body.removeChild(textArea);
       },
       async captureAndAnalyzeFrame() {
         if (!this.html5QrCode || !this.html5QrCode.isScanning) { this.showNotification('Scanner ist nicht aktiv.', 'error'); return; }
@@ -1591,7 +1606,12 @@
       await Promise.all([authCheck, minDelay]);
       this.isAuthReady = true;
     }
-  }).mount('#app');
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    createApp(appConfig).mount('#app');
+  });
+
 </script>
 </body>
 </html>
