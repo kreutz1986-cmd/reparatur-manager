@@ -1,0 +1,1432 @@
+<!-- VERSION MIT PRO-FEATURES & STABILITÄTS-FIXES -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Reparatur Manager Online</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <style>
+     body { font-family: 'Inter', sans-serif; }
+     [v-cloak] { display: none; }
+
+     .modal-backdrop { position: fixed; inset: 0; display: flex; justify-content: center; align-items: center; background-color: rgba(0,0,0,.5); z-index: 50; padding: 1rem; }
+     .modal-content { background: #fff; padding: 2rem; border-radius: .5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -2px rgba(0,0,0,.05); width: 90%; max-width: 640px; max-height: 90vh; overflow-y: auto; }
+     .table-row-selected { background-color: #eef2ff; }
+     .table-row-urgent { background-color: #fee2e2; }
+
+     /* QR Scanner Fixes for PC Zoom */
+     #qr-reader { width: 100%; max-width: 560px; border: 2px solid #4f46e5; border-radius: .5rem; overflow: hidden; transform: scale(1) !important; position: relative; }
+     #qr-reader video { max-width: 100%; will-change: transform; background:#000; object-fit: cover; }
+
+     .spinner { border: 2px solid rgba(0, 0, 0, 0.1); width: 20px; height: 20px; border-radius: 50%; border-left-color: #4f46e5; animation: spin 1s ease infinite; }
+     
+     /* Toast Notifications */
+     .toast-container { position: fixed; top: 1.5rem; right: 1.5rem; z-index: 100; display: flex; flex-direction: column; gap: 0.75rem; }
+     .toast { display: flex; align-items: center; padding: 1rem; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -1px rgba(0,0,0,.06); transform: translateX(100%); opacity: 0; transition: all 0.3s ease-in-out; }
+     .toast.show { transform: translateX(0); opacity: 1; }
+     .toast-info { background-color: #3b82f6; color: white; }
+     .toast-success { background-color: #22c55e; color: white; }
+     .toast-error { background-color: #ef4444; color: white; }
+
+     /* New, improved Fallout Loader */
+     .fallout-loader {
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+       height: 100vh;
+       background-color: #0d1a26;
+       font-family: 'Roboto Mono', monospace;
+       overflow: hidden;
+     }
+     .vault-logo {
+       width: 200px;
+       height: 200px;
+       border-radius: 50%;
+       background: radial-gradient(circle, #003c5a 0%, #00283c 100%);
+       border: 10px solid #005a87;
+       display: flex;
+       justify-content: center;
+       align-items: center;
+       box-shadow: 0 0 30px rgba(0, 191, 255, 0.5), inset 0 0 20px rgba(0,0,0,0.7);
+       position: relative;
+     }
+     .vault-gear {
+       width: 180px;
+       height: 180px;
+       position: absolute;
+       background-image: 
+         radial-gradient(circle, transparent 60%, #0077b3 61%, #0077b3 65%, transparent 66%),
+         repeating-conic-gradient(#0077b3 0% 5%, transparent 5% 10%);
+       -webkit-mask-image: radial-gradient(circle, transparent 60%, black 61%);
+       mask-image: radial-gradient(circle, transparent 60%, black 61%);
+       animation: spin 10s linear infinite;
+     }
+     .vault-number {
+       font-size: 4rem;
+       font-weight: 700;
+       color: #ffc107;
+       text-shadow: 0 0 10px #ffc107, 0 0 20px #ff8f00;
+       z-index: 10;
+     }
+     .loading-text {
+       margin-top: 2rem;
+       color: #00bfff;
+       font-size: 1.125rem;
+       letter-spacing: 0.2em;
+       text-shadow: 0 0 5px #00bfff, 0 0 10px #00bfff;
+       animation: blink 1.5s linear infinite;
+     }
+     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+     @keyframes blink { 50% { opacity: 0.5; } }
+     th { cursor: pointer; user-select: none; }
+     th .sort-icon { opacity: 0.3; }
+     th.active .sort-icon { opacity: 1; }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+<div id="fatal" style="display:none;background:#fee2e2;color:#7f1d1d;padding:12px 16px;font-family:Inter,system-ui,Arial">
+  <strong>Fehler:</strong> <span id="fatal-msg">Unbekannter Fehler.</span>
+</div>
+
+<div id="app" v-cloak>
+
+  <!-- Ladeanzeige -->
+  <div v-if="!isAuthReady" class="fallout-loader">
+    <div class="vault-logo">
+        <div class="vault-gear"></div>
+        <div class="vault-number">SK</div>
+    </div>
+    <p class="loading-text">SYSTEM WIRD GESTARTET...</p>
+  </div>
+
+  <!-- Login -->
+  <div v-if="isAuthReady && !user.loggedIn" class="min-h-screen flex items-center justify-center bg-gray-50 py-8 px-4">
+    <div class="max-w-md w-full space-y-8">
+      <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">{{ t.mainTitle }}</h2>
+      <form class="mt-8 space-y-6" @submit.prevent="login">
+        <div class="rounded-md shadow-sm -space-y-px">
+          <input v-model="loginForm.email" type="email" required class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" :placeholder="t.emailPlaceholder">
+          <input v-model="loginForm.password" type="password" required class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" :placeholder="t.passwordPlaceholder">
+        </div>
+        <p v-if="loginForm.error" class="text-red-500 text-sm">{{ loginForm.error }}</p>
+        <button type="submit" class="w-full py-2 px-4 text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">{{ t.loginButton }}</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Main App -->
+  <div v-if="isAuthReady && user.loggedIn" class="p-4 md:p-8">
+    <header class="flex flex-wrap justify-between items-center mb-6 border-b pb-4">
+      <div class="flex items-center space-x-6">
+        <h1 class="text-2xl font-bold text-gray-700">{{ t.mainTitle }}</h1>
+        <nav class="flex items-center space-x-4">
+          <button @click="currentView = 'repairs'" :class="{'bg-indigo-100 text-indigo-700': currentView === 'repairs', 'text-gray-500 hover:bg-gray-100': currentView !== 'repairs'}" class="px-3 py-2 rounded-md text-sm font-medium">{{ t.repairs }}</button>
+          <button @click="currentView = 'dashboard'" :class="{'bg-indigo-100 text-indigo-700': currentView === 'dashboard', 'text-gray-500 hover:bg-gray-100': currentView !== 'dashboard'}" class="px-3 py-2 rounded-md text-sm font-medium">{{ t.dashboard }}</button>
+        </nav>
+      </div>
+      <div class="flex items-center mt-4 sm:mt-0 space-x-4">
+        <div v-if="!isOnline" class="flex items-center space-x-2 bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full text-sm font-semibold">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 010 12.728m-12.728 0a9 9 0 010-12.728m12.728 0L5.636 18.364m12.728 0L5.636 5.636"></path></svg>
+            <span>Offline</span>
+        </div>
+        <div class="flex items-center space-x-1 border border-gray-300 rounded-md p-0.5">
+            <button @click="setLanguage('de')" :class="{'bg-indigo-600 text-white': currentLanguage === 'de', 'bg-white text-gray-600': currentLanguage !== 'de'}" class="px-3 py-1 rounded-md text-sm font-bold">DE</button>
+            <button @click="setLanguage('fr')" :class="{'bg-indigo-600 text-white': currentLanguage === 'fr', 'bg-white text-gray-600': currentLanguage !== 'fr'}" class="px-3 py-1 rounded-md text-sm font-bold">FR</button>
+        </div>
+        <button @click="showHouseManagement = true" class="bg-white hover:bg-gray-100 text-gray-700 font-semibold py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm">{{ t.manageHouses }}</button>
+        <button @click="toggleFullscreen" class="p-2 rounded-md hover:bg-gray-200" :title="isFullscreen ? t.exitFullscreen : t.enterFullscreen">
+            <svg v-if="!isFullscreen" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 0h-4m4 0l-5-5" />
+            </svg>
+            <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 4H4v6m0 8v-6h6m10-2h-6V4m0 8h6v6" />
+            </svg>
+        </button>
+        <div class="relative" v-if="user.isAdmin">
+          <button @click="showAdminMenu = !showAdminMenu" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md text-sm flex items-center">
+            {{ t.administration }}
+            <svg class="ml-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+          </button>
+          <div v-if="showAdminMenu" @click.away="showAdminMenu = false" class="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 z-20">
+            <a href="#" @click.prevent="showUserManagement = true; showAdminMenu = false" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{{ t.users }}</a>
+            <a href="#" @click.prevent="showTechnikerManagement = true; showAdminMenu = false" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{{ t.technicians }}</a>
+          </div>
+        </div>
+        <span class="text-sm text-gray-600">
+          {{ t.loggedInAs }}: {{ user.email }}
+          <span v-if="user.isAdmin" class="font-semibold text-indigo-600">(Admin)</span>
+        </span>
+        <button @click="logout" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-md text-sm">{{ t.logoutButton }}</button>
+      </div>
+    </header>
+
+    <!-- Reparaturen View -->
+    <div v-if="currentView === 'repairs'">
+      <!-- New Entry -->
+      <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+        <h2 class="text-xl font-semibold mb-4 border-b pb-2">{{ t.newRepairEntry }}</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700">{{ t.houseLabel }}</label>
+            <select v-model="newEntry.house" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+              <option v-for="house in houses" :key="house" :value="house">{{ house }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">{{ t.capturedAtLabel }}</label>
+            <input v-model="newEntry.captured_at" type="date" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">{{ t.dateLabel }}</label>
+            <input v-model="newEntry.date" type="text" placeholder="z.B. 23W25" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">{{ t.deviceLabel }}</label>
+            <input v-model="newEntry.fiche" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">{{ t.engagementLabel }}</label>
+            <input v-model="newEntry.fiche_engagement" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">{{ t.ipeiLabel }}</label>
+            <div class="relative mt-1">
+              <input v-model="newEntry.ipei" type="text" class="block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm pr-10">
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">{{ t.pidLabel }}</label>
+            <input v-model="newEntry.pid" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+          </div>
+          <div class="relative">
+            <label class="block text-sm font-medium text-gray-700">{{ t.errorLabel }}</label>
+            <input v-model="newEntry.error" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">{{ t.statusLabel }}</label>
+            <select v-model="newEntry.status" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+              <option>{{ t.statusOpen }}</option><option>{{ t.statusInProgress }}</option><option>{{ t.statusCompleted }}</option><option>{{ t.statusCompletedAtCustomer }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">{{ t.assignTechnicianLabel }}</label>
+            <select v-model="newEntry.techniker" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+              <option value="">{{ t.noOne }}</option><option v-for="techniker in technikerList" :key="techniker" :value="techniker">{{ techniker }}</option>
+            </select>
+          </div>
+          <div class="md:col-span-2">
+            <label class="block text-sm font-medium text-gray-700">{{ t.qrCodeLabel }}</label>
+            <div class="mt-1 flex rounded-md shadow-sm">
+              <input v-model="qrCodeInput" @keyup.enter.prevent="processQRCode(qrCodeInput)" @keydown="handleQrKeyDown" type="text" class="flex-1 block w-full min-w-0 rounded-none rounded-l-md py-2 px-3 border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" :placeholder="t.scanPlaceholder">
+              <button @click="startScanner" type="button" class="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 hover:bg-gray-100">
+                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h4a1 1 0 010 2H5v2a1 1 0 11-2 0V4zm14 0a1 1 0 00-1-1h-4a1 1 0 100 2h3v2a1 1 0 102 0V4zm-2 12a1 1 0 01-1 1h-4a1 1 0 110-2h3v-2a1 1 0 112 0v3zM4 15a1 1 0 011-1h3a1 1 0 110 2H5a1 1 0 01-1-1zm5-8a1 1 0 011-1h2a1 1 0 110 2h-2a1 1 0 01-1-1zM8 9a1 1 0 00-1 1v2a1 1 0 102 0v-2a1 1 0 00-1-1zm5 1a1 1 0 100-2 1 1 0 000 2zM8 13a1 1 0 100-2 1 1 0 000 2zm5-1a1 1 0 11-2 0 1 1 0 012 0z" clip-rule="evenodd" /></svg>
+              </button>
+            </div>
+          </div>
+          <div class="col-span-1 md:col-span-2 lg:col-span-4 flex items-end">
+            <button @click="addRepair" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md">{{ t.addButton }}</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controls & Table -->
+      <div class="bg-white p-6 rounded-lg shadow-md">
+        <div class="flex flex-wrap justify-between items-center mb-4">
+          <div class="flex items-center space-x-4">
+            <div>
+              <label class="text-sm font-medium text-gray-700">{{ t.houseFilterLabel }}</label>
+              <select v-model="filter.house" class="mt-1 inline-block py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                <option value="">{{ t.all }}</option><option v-for="house in houses" :key="house" :value="house">{{ house }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-sm font-medium text-gray-700">{{ t.searchLabel }}</label>
+              <input v-model="filter.search" type="text" :placeholder="t.searchPlaceholder" class="mt-1 inline-block w-64 py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            </div>
+          </div>
+          <div>
+            <button @click="exportCSV" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-md text-sm">Export CSV</button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-6 py-3"><input type="checkbox" @change="toggleSelectAll" :checked="allSelected" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"></th>
+                <th v-for="(header, key) in tableHeaders" :key="key" @click="sortBy(key)" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" :class="{ 'active': sortKey === key }">
+                  <div class="flex items-center">
+                    <span>{{ header }}</span>
+                    <span class="ml-2 sort-icon">
+                      <svg v-if="sortKey === key && sortOrder === 'asc'" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" /></svg>
+                      <svg v-else-if="sortKey === key && sortOrder === 'desc'" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                      <svg v-else class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" /></svg>
+                    </span>
+                  </div>
+                </th>
+                <th class="relative px-6 py-3"><span class="sr-only">{{ t.actions }}</span></th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              <tr v-for="repair in sortedAndFilteredRepairs" :key="repair.id" :class="{ 'table-row-selected': selectedRepairs.includes(repair.id), 'table-row-urgent': isUrgent(repair) }">
+                <td class="px-6 py-4"><input type="checkbox" v-model="selectedRepairs" :value="repair.id" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"></td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">{{ repair.house }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">{{ repair.captured_at }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">{{ repair.fiche }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-medium">{{ repair.error }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">{{ repair.ipei }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                  <span :class="getStatusClass(repair.status)" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">{{ t[getStatusTranslationKey(repair.status)] }}</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">{{ repair.techniker || '---' }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <button @click="editRepair(repair)" class="text-indigo-600 hover:text-indigo-900 ml-4">{{ t.editButton }}</button>
+                  <button @click="confirmDelete('repair', repair)" class="text-red-600 hover:text-red-900 ml-4">{{ t.deleteButton }}</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Dashboard View -->
+    <div v-if="currentView === 'dashboard'">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- Stat Cards -->
+            <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-500">{{ t.totalRepairs }}</p>
+                    <p class="text-3xl font-bold text-gray-800">{{ totalRepairs }}</p>
+                </div>
+                <div class="bg-indigo-100 p-3 rounded-full"><svg class="h-6 w-6 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg></div>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-500">{{ t.openCases }}</p>
+                    <p class="text-3xl font-bold text-red-500">{{ openRepairs }}</p>
+                </div>
+                <div class="bg-red-100 p-3 rounded-full"><svg class="h-6 w-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
+            </div>
+             <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-500">{{ t.statusCompleted }}</p>
+                    <p class="text-3xl font-bold text-green-500">{{ totalRepairs - openRepairs }}</p>
+                </div>
+                <div class="bg-green-100 p-3 rounded-full"><svg class="h-6 w-6 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+            <!-- Reparaturen pro Haus -->
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h3 class="text-lg font-semibold mb-4">{{ t.casesPerHouse }}</h3>
+                <div class="space-y-3">
+                    <div v-for="(count, house) in repairsByHouse" :key="house">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-sm font-medium">{{ house }}</span>
+                            <span class="text-sm font-bold">{{ count }}</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2.5">
+                            <div class="bg-indigo-600 h-2.5 rounded-full" :style="{ width: (count / maxRepairsInStats * 100) + '%' }"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top 5 Fehler -->
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h3 class="text-lg font-semibold mb-4">{{ t.mostCommonErrors }}</h3>
+                <ul class="space-y-2">
+                    <li v-for="error in mostCommonErrors" :key="error.name" class="flex justify-between items-center text-sm">
+                        <span class="text-gray-700 truncate pr-4">{{ error.name }}</span>
+                        <span class="font-semibold bg-gray-100 px-2 py-1 rounded-md">{{ error.count }}x</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+  </div>
+
+  <!-- Edit Modal -->
+  <div v-if="showEditModal" class="modal-backdrop">
+    <div class="modal-content">
+      <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">{{ t.editEntry }}</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div><label class="block text-sm font-medium text-gray-700">{{ t.houseLabel }}</label><select v-model="currentEdit.house" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"><option v-for="house in houses" :key="house" :value="house">{{ house }}</option></select></div>
+        <div><label class="block text-sm font-medium text-gray-700">{{ t.capturedAtLabel }}</label><input v-model="currentEdit.captured_at" type="date" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></div>
+        <div><label class="block text-sm font-medium text-gray-700">{{ t.dateLabel }}</label><input v-model="currentEdit.date" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></div>
+        <div><label class="block text-sm font-medium text-gray-700">{{ t.deviceLabel }}</label><input v-model="currentEdit.fiche" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></div>
+        <div><label class="block text-sm font-medium text-gray-700">{{ t.engagementLabel }}</label><input v-model="currentEdit.fiche_engagement" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></div>
+        <div><label class="block text-sm font-medium text-gray-700">{{ t.ipeiLabel }}</label><input v-model="currentEdit.ipei" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></div>
+        <div><label class="block text-sm font-medium text-gray-700">{{ t.pidLabel }}</label><input v-model="currentEdit.pid" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></div>
+        <div><label class="block text-sm font-medium text-gray-700">{{ t.errorLabel }}</label><input v-model="currentEdit.error" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></div>
+        <div><label class="block text-sm font-medium text-gray-700">{{ t.statusLabel }}</label><select v-model="currentEdit.status" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"><option>{{ t.statusOpen }}</option><option>{{ t.statusInProgress }}</option><option>{{ t.statusCompleted }}</option><option>{{ t.statusCompletedAtCustomer }}</option></select></div>
+        <div><label class="block text-sm font-medium text-gray-700">{{ t.assignTechnicianLabel }}</label><select v-model="currentEdit.techniker" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"><option value="">{{ t.noOne }}</option><option v-for="techniker in technikerList" :key="techniker" :value="techniker">{{ techniker }}</option></select></div>
+      </div>
+      <hr class="my-6">
+      <div class="mt-4">
+        <h4 class="text-md font-semibold text-gray-800 mb-2">{{ t.commentHistory }}</h4>
+        <div class="bg-gray-50 p-3 rounded-md max-h-48 overflow-y-auto mb-3 space-y-3">
+          <div v-for="comment in currentEdit.comments" :key="comment.timestamp">
+            <p class="text-sm text-gray-700">{{ comment.text }}</p>
+            <p class="text-xs text-gray-500 text-right">- {{ comment.user }} am {{ formatTimestamp(comment.timestamp) }}</p>
+          </div>
+          <p v-if="!currentEdit.comments || currentEdit.comments.length === 0" class="text-sm text-gray-500">{{ t.noCommentsYet }}</p>
+        </div>
+        <textarea v-model="newCommentText" rows="2" :placeholder="t.addCommentPlaceholder" class="block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
+        <button @click="addComment" class="mt-2 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md text-sm">{{ t.addCommentButton }}</button>
+      </div>
+      <div class="mt-6 flex justify-end space-x-3">
+        <button @click="showEditModal = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">{{ t.cancelButton }}</button>
+        <button @click="saveEdit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md">{{ t.saveButton }}</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- User Management Modal -->
+  <div v-if="showUserManagement" class="modal-backdrop">
+    <div class="modal-content">
+      <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">{{ t.manageUsers }}</h3>
+      <div class="mb-6 p-4 border rounded-md bg-blue-50 text-blue-800">
+        <h4 class="font-bold mb-2">{{ t.addUserInstructionTitle }}</h4>
+        <ol class="list-decimal list-inside text-sm space-y-1">
+          <li v-html="t.addUserStep1"></li>
+          <li>{{ t.addUserStep2 }}</li>
+          <li>{{ t.addUserStep3 }}</li>
+          <li>{{ t.addUserStep4 }}</li>
+        </ol>
+      </div>
+      <div class="mb-6 p-4 border rounded-md">
+        <h4 class="font-semibold mb-2">{{ t.addUserRoleTitle }}</h4>
+        <form @submit.prevent="addUserRole">
+          <input v-model="newUser.email" type="email" :placeholder="t.newUserEmailPlaceholder" required class="block w-full mb-2 p-2 border rounded">
+          <div class="flex items-center mb-2"><input v-model="newUser.isAdmin" type="checkbox" id="isAdmin" class="h-4 w-4 text-indigo-600 border-gray-300 rounded"><label for="isAdmin" class="ml-2 block text-sm text-gray-900">{{ t.isAdminLabel }}</label></div>
+          <button type="submit" class="bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700">{{ t.saveRoleButton }}</button>
+        </form>
+      </div>
+      <div>
+        <h4 class="font-semibold mb-2">{{ t.existingUsers }}</h4>
+        <ul><li v-for="user in userList" :key="user.id" class="flex justify-between items-center p-2 border-b"><span>{{ user.email }} <span v-if="user.isAdmin" class="text-xs text-green-600 font-semibold">(Admin)</span></span><button @click="confirmDelete('user', user)" class="text-red-500 hover:text-red-700 text-sm">{{ t.deleteButton }}</button></li></ul>
+      </div>
+      <div class="mt-6 flex justify-end"><button @click="showUserManagement = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">{{ t.closeButton }}</button></div>
+    </div>
+  </div>
+
+  <!-- House Management Modal -->
+  <div v-if="showHouseManagement" class="modal-backdrop">
+    <div class="modal-content">
+      <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">{{ t.manageHouses }}</h3>
+      <div class="mb-4">
+        <input v-model="newHouseName" @keyup.enter="addHouse" type="text" :placeholder="t.newHouseNamePlaceholder" class="p-2 border rounded w-full">
+        <button @click="addHouse" class="mt-2 bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700">{{ t.addButton }}</button>
+      </div>
+      <ul><li v-for="house in houses" :key="house" class="flex justify-between items-center p-2 border-b"><span>{{ house }}</span><button @click="confirmDelete('house', house)" class="text-red-500 hover:text-red-700 text-sm">{{ t.deleteButton }}</button></li></ul>
+      <div class="mt-6 flex justify-end"><button @click="showHouseManagement = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">{{ t.closeButton }}</button></div>
+    </div>
+  </div>
+  
+  <!-- Techniker Management Modal -->
+  <div v-if="showTechnikerManagement" class="modal-backdrop">
+    <div class="modal-content">
+      <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">{{ t.manageTechnicians }}</h3>
+      <div class="mb-4">
+        <input v-model="newTechnicianName" @keyup.enter="addTechnician" type="text" :placeholder="t.newTechnicianNamePlaceholder" class="p-2 border rounded w-full">
+        <button @click="addTechnician" class="mt-2 bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700">{{ t.addButton }}</button>
+      </div>
+      <ul><li v-for="techniker in technikerList" :key="techniker" class="flex justify-between items-center p-2 border-b"><span>{{ techniker }}</span><button @click="confirmDelete('technician', techniker)" class="text-red-500 hover:text-red-700 text-sm">{{ t.deleteButton }}</button></li></ul>
+      <div class="mt-6 flex justify-end"><button @click="showTechnikerManagement = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">{{ t.closeButton }}</button></div>
+    </div>
+  </div>
+
+  <!-- QR Scanner Modal -->
+  <div v-if="showScanner" class="modal-backdrop" @click.self="stopScanner">
+    <div class="modal-content">
+      <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">{{ t.scanQrCode }}</h3>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+        <div class="md:col-span-2">
+          <label class="block text-sm font-medium text-gray-700 mb-1">{{ t.cameraLabel }}</label>
+          <select v-model="selectedCameraId" @change="restartScanner" class="w-full py-2 px-3 border border-gray-300 bg-white rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            <option v-for="c in cameras" :key="c.id" :value="c.id">{{ c.label }}</option>
+          </select>
+        </div>
+        <div class="flex items-end">
+          <button v-if="hasTorch" @click="toggleTorch" type="button" class="w-full py-2 px-3 rounded-md text-white" :class="torchOn ? 'bg-amber-600 hover:bg-amber-700' : 'bg-gray-600 hover:bg-gray-700'">
+            {{ torchOn ? t.torchOff : t.torchOn }}
+          </button>
+        </div>
+      </div>
+      <div id="qr-reader">
+        <div v-if="isScanningWithAi" class="absolute inset-0 bg-black bg-opacity-75 flex flex-col items-center justify-center">
+            <div class="spinner" style="width: 40px; height: 40px; border-left-color: #fff;"></div>
+            <p class="text-white mt-4">{{ t.aiScanActive }}</p>
+        </div>
+      </div>
+      <div v-if="cameraZoomCapabilities" class="mt-4">
+        <label for="zoom-slider" class="block text-sm font-medium text-gray-700">{{ t.zoomLabel }}: {{ Math.round(zoomLevel * 10) / 10 }}x</label>
+        <input id="zoom-slider" type="range" v-model.number="zoomLevel" :min="cameraZoomCapabilities.min" :max="cameraZoomCapabilities.max" :step="cameraZoomCapabilities.step" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+      </div>
+      <div v-else class="mt-4">
+        <label for="zoom-slider-fallback" class="block text-sm font-medium text-gray-700">{{ t.zoomLabel }} (Fallback): {{ Math.round(cssZoomLevel * 10) / 10 }}x</label>
+        <input id="zoom-slider-fallback" type="range" v-model.number="cssZoomLevel" min="1" max="2.5" step="0.05" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+        <p class="text-xs text-gray-500 mt-1">{{ t.zoomFallbackNote }}</p>
+      </div>
+      <div class="mt-4 flex justify-between">
+        <button @click="restartScanner" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">{{ t.restartButton }}</button>
+        <button @click="stopScanner" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">{{ t.cancelButton }}</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Confirmation Modal -->
+  <div v-if="showConfirmModal" class="modal-backdrop">
+    <div class="modal-content max-w-sm">
+        <h3 class="text-lg font-medium text-gray-900">{{ t.confirmAction }}</h3>
+        <p class="mt-2 text-sm text-gray-600">{{ confirmMessage }}</p>
+        <div class="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
+            <button @click="executeConfirm" type="button" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none sm:col-start-2 sm:text-sm">
+                {{ t.deleteButton }}
+            </button>
+            <button @click="cancelConfirm" type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:col-start-1 sm:text-sm">
+                {{ t.cancelButton }}
+            </button>
+        </div>
+    </div>
+  </div>
+
+  <!-- Toast Notifications Container -->
+  <div class="toast-container">
+      <div v-for="toast in notifications" :key="toast.id" :class="['toast', toast.type, { 'show': toast.show }]">
+          {{ toast.message }}
+      </div>
+  </div>
+
+</div>
+
+<!-- App Script -->
+<script type="module">
+  // --- Globale Fehlerfänger (gegen weiße Seite) ---
+  window.addEventListener("error", e => {
+    const box = document.getElementById("fatal");
+    const msg = document.getElementById("fatal-msg");
+    if (box && msg) { msg.textContent = (e && e.error && e.error.message) ? e.error.message : (e && e.message ? e.message : String(e)); box.style.display = "block"; }
+    console.error("Uncaught error:", (e && e.error) ? e.error : e);
+  });
+  window.addEventListener("unhandledrejection", e => {
+    const box = document.getElementById("fatal");
+    const msg = document.getElementById("fatal-msg");
+    if (box && msg) { msg.textContent = (e && e.reason && e.reason.message) ? e.reason.message : String(e && e.reason ? e.reason : e); box.style.display = "block"; }
+    console.error("Unhandled promise rejection:", (e && e.reason) ? e.reason : e);
+  });
+
+  // Firebase SDKs
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
+  import { getFirestore, collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, serverTimestamp, query, getDocs, setDoc, orderBy, where, limit, startAfter, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+  
+  // Vue 3
+  import { createApp } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBR7PVIb3QaN6aI1VjJ27lIUhZm8c5R6_o",
+    authDomain: "reparatur-manager-ells.firebaseapp.com",
+    projectId: "reparatur-manager-ells",
+    storageBucket: "reparatur-manager-ells.appspot.com",
+    messagingSenderId: "666980467728",
+    appId: "1:666980467728:web:7f97069b37b0a84966f695"
+  };
+
+  const firebaseApp = initializeApp(firebaseConfig);
+  const auth = getAuth(firebaseApp);
+  const db = getFirestore(firebaseApp);
+
+  // Enable Firestore offline persistence only on mobile devices
+  const isMobileDevice = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (isMobileDevice) {
+    enableIndexedDbPersistence(db)
+      .catch((err) => {
+          if (err.code == 'failed-precondition') {
+              console.warn("Firestore persistence failed: Multiple tabs open.");
+          } else if (err.code == 'unimplemented') {
+              console.warn("Firestore persistence not available in this browser.");
+          }
+      });
+  }
+
+  const modelMap = {"02660000":"CH-7722 TIPTEL","72682000":"CH-S33 TIPTEL","02670000":"CH-7724 TIPTEL"};
+  
+  function resolveModelName(raw) {
+    if (!raw) return { name: "", code: "" };
+    const compact = String(raw).trim().replace(/\s+/g, "");
+    const codeOnly = compact.replace(/\D/g, "");
+    const name = modelMap[compact] || modelMap[codeOnly] || compact;
+    return { name, code: codeOnly || compact };
+  }
+
+  createApp({
+    data() {
+      return {
+        isAuthReady: false,
+        user: { loggedIn: false, email: null, uid: null, isAdmin: false },
+        loginForm: { email: '', password: '', error: '' },
+        
+        currentView: 'repairs',
+        showAdminMenu: false,
+
+        repairs: [],
+        houses: [],
+        technikerList: ['Simon', 'Pascal', 'Mirco', 'Sead', 'Thomas'],
+        newEntry: { house: '', captured_at: new Date().toISOString().slice(0,10), date: '', fiche: '', fiche_engagement: '', ipei: '', pid: '', error: '', status: 'Offen', comments: [], techniker: '' },
+        
+        qrCodeInput: '', qrScanTimer: null,
+        filter: { house: '', search: '' },
+        sortKey: 'createdAt',
+        sortOrder: 'desc',
+        
+        showEditModal: false,
+        currentEdit: {},
+        newCommentText: '',
+        
+        showUserManagement: false,
+        showHouseManagement: false,
+        showTechnikerManagement: false,
+        userList: [],
+        newUser: { email: '', isAdmin: false },
+        newHouseName: '',
+        newTechnicianName: '',
+
+        selectedRepairs: [],
+        
+        cameras: [],
+        selectedCameraId: null,
+        cameraZoomCapabilities: null,
+        zoomLevel: 1.0,
+        cssZoomLevel: 1.0,
+        hasTorch: false,
+        torchOn: false,
+        showScanner: false,
+        html5QrCode: null,
+        isScanningWithAi: false,
+        scanIntervalId: null,
+
+        showConfirmModal: false,
+        confirmMessage: '',
+        confirmAction: null,
+
+        notifications: [],
+        
+        // Dashboard
+        allRepairsForStats: [],
+
+        // Internationalization (i18n)
+        currentLanguage: 'de',
+        isOnline: navigator.onLine,
+        isFullscreen: false,
+        translations: {
+            de: {
+                mainTitle: "Reparatur Manager",
+                repairs: "Reparaturen",
+                dashboard: "Dashboard",
+                loginButton: "Anmelden",
+                logoutButton: "Abmelden",
+                emailPlaceholder: "E-Mail-Adresse",
+                passwordPlaceholder: "Passwort",
+                administration: "Verwaltung",
+                users: "Benutzer",
+                technicians: "Techniker",
+                manageHouses: "Häuser verwalten",
+                loggedInAs: "Angemeldet als",
+                newRepairEntry: "Neuer Reparatur-Eintrag",
+                houseLabel: "Haus",
+                capturedAtLabel: "Erfasst am",
+                dateLabel: "Datum",
+                deviceLabel: "Gerät",
+                engagementLabel: "Fiche d'engagement",
+                ipeiLabel: "IPEI",
+                pidLabel: "P-ID",
+                errorLabel: "Fehler",
+                statusLabel: "Status",
+                assignTechnicianLabel: "Techniker zuweisen",
+                qrCodeLabel: "QR-Code",
+                scanPlaceholder: "Hier scannen oder einfügen...",
+                addButton: "Hinzufügen",
+                houseFilterLabel: "Haus-Filter:",
+                all: "Alle",
+                searchLabel: "Suche:",
+                searchPlaceholder: "Suchen...",
+                emailForSelected: (count) => `E-Mail für ${count} Markierte`,
+                monthlyReport: "Monatsbericht",
+                tableHeaders: { house: 'Haus', captured_at: 'Erfasst am', fiche: 'Gerät', error: 'Fehler', ipei: 'IPEI', status: 'Status', techniker: 'Techniker' },
+                actions: "Aktionen",
+                editButton: "Bearbeiten",
+                deleteButton: "Löschen",
+                loadMore: "Mehr laden",
+                loadingMore: "Lade...",
+                allEntriesLoaded: "Alle Einträge geladen.",
+                statusOpen: "Offen",
+                statusInProgress: "In Bearbeitung",
+                statusCompleted: "Abgeschlossen",
+                statusCompletedAtCustomer: "Beim Kunden repariert",
+                noOne: "Niemand",
+                totalRepairs: "Gesamte Reparaturen",
+                openCases: "Offene Fälle",
+                casesPerHouse: "Fälle pro Haus",
+                mostCommonErrors: "Häufigste Fehler (Top 5)",
+                editEntry: "Eintrag bearbeiten",
+                commentHistory: "Kommentarverlauf",
+                noCommentsYet: "Noch keine Kommentare.",
+                addCommentPlaceholder: "Neuen Kommentar hinzufügen...",
+                addCommentButton: "Kommentar hinzufügen",
+                cancelButton: "Abbrechen",
+                saveButton: "Speichern",
+                manageUsers: "Benutzer verwalten",
+                addUserInstructionTitle: "Anleitung zum Hinzufügen",
+                addUserStep1: `Öffnen Sie die <a href="https://console.firebase.google.com/" target="_blank" class="underline hover:text-blue-600">Firebase Konsole</a>.`,
+                addUserStep2: "Authentication → Users → Add user.",
+                addUserStep3: "Benutzer mit E-Mail & Passwort erstellen.",
+                addUserStep4: "Hier unten die gleiche E-Mail eintragen und Rolle zuweisen.",
+                addUserRoleTitle: "Benutzerrolle in Datenbank eintragen",
+                newUserEmailPlaceholder: "E-Mail des neuen Benutzers",
+                isAdminLabel: "Ist Administrator?",
+                saveRoleButton: "Rolle speichern",
+                existingUsers: "Bestehende Benutzer",
+                closeButton: "Schließen",
+                newHouseNamePlaceholder: "Neuen Hausnamen eingeben",
+                manageTechnicians: "Techniker verwalten",
+                newTechnicianNamePlaceholder: "Neuen Techniker eingeben",
+                scanQrCode: "QR-Code scannen",
+                cameraLabel: "Kamera",
+                torchOn: "Taschenlampe AN",
+                torchOff: "Taschenlampe AUS",
+                zoomLabel: "Zoom",
+                zoomFallbackNote: "Hinweis: Gerät unterstützt kein Hardware-Zoom, es wird optisch gezoomt.",
+                restartButton: "Neu starten",
+                aiKnowledgeBase: "KI-Wissensdatenbank",
+                confirmAction: "Aktion bestätigen",
+                analyzeIpeiTooltip: "IPEI-Historie mit AI analysieren",
+                searchKbTooltip: "KI-Wissensdatenbank durchsuchen",
+                emailForBossTooltip: "KI E-Mail für Chef erstellen",
+                notifRepairAdded: "Reparatur erfolgreich hinzugefügt.",
+                notifConfirmDelete: (item) => `Möchten Sie den Reparatureintrag für "${item}" wirklich löschen?`,
+                notifHousesLoading: 'Häuser werden noch geladen, bitte warten.',
+                notifFillHouseAndDevice: 'Bitte Haus und Gerät ausfüllen.',
+                notifUnsavedComment: 'Sie haben einen Kommentar geschrieben, aber nicht hinzugefügt. Bitte klicken Sie zuerst auf "Kommentar hinzufügen".',
+                notifChangesSaved: 'Änderungen gespeichert.',
+                notifEntryDeleted: 'Eintrag gelöscht.',
+                notifDeleteError: 'Fehler: Eintrag konnte nicht gelöscht werden.',
+                notifNoCamera: 'Keine Kamera gefunden.',
+                notifScannerStartError: 'Scanner konnte nicht gestartet werden.',
+                notifCameraStartError: 'Kamera konnte nicht gestartet werden. Prüfen Sie die Berechtigungen.',
+                notifQrSuccess: 'QR-Code erfolgreich verarbeitet!',
+                notifQrError: 'QR-Code konnte nicht verarbeitet werden.',
+                notifTorchError: 'Taschenlampe nicht unterstützt.',
+                notifCommentEmpty: 'Kommentar darf nicht leer sein.',
+                notifNowOnline: 'Sie sind wieder online. Daten werden synchronisiert.',
+                notifNowOffline: 'Sie sind jetzt offline. Änderungen werden lokal gespeichert.',
+                aiSuggestions: "KI-Vorschläge",
+                enterFullscreen: "Vollbildmodus",
+                exitFullscreen: "Vollbildmodus beenden",
+                aiScanActive: "KI-Scan aktiv..."
+            },
+            fr: {
+                mainTitle: "Gestionnaire de Réparation",
+                repairs: "Réparations",
+                dashboard: "Tableau de bord",
+                loginButton: "Se connecter",
+                logoutButton: "Se déconnecter",
+                emailPlaceholder: "Adresse e-mail",
+                passwordPlaceholder: "Mot de passe",
+                administration: "Administration",
+                users: "Utilisateurs",
+                technicians: "Techniciens",
+                manageHouses: "Gérer les sites",
+                loggedInAs: "Connecté en tant que",
+                newRepairEntry: "Nouvelle entrée de réparation",
+                houseLabel: "Site",
+                capturedAtLabel: "Enregistré le",
+                dateLabel: "Date",
+                deviceLabel: "Appareil",
+                engagementLabel: "Fiche d'engagement",
+                ipeiLabel: "IPEI",
+                pidLabel: "P-ID",
+                errorLabel: "Panne",
+                statusLabel: "Statut",
+                assignTechnicianLabel: "Assigner un technicien",
+                qrCodeLabel: "Code QR",
+                scanPlaceholder: "Scannez ou collez ici...",
+                addButton: "Ajouter",
+                houseFilterLabel: "Filtre de site:",
+                all: "Tous",
+                searchLabel: "Recherche:",
+                searchPlaceholder: "Rechercher...",
+                emailForSelected: (count) => `E-mail pour ${count} sélectionnés`,
+                monthlyReport: "Rapport mensuel",
+                tableHeaders: { house: 'Site', captured_at: 'Enregistré le', fiche: 'Appareil', error: 'Panne', ipei: 'IPEI', status: 'Statut', techniker: 'Technicien' },
+                actions: "Actions",
+                editButton: "Modifier",
+                deleteButton: "Supprimer",
+                loadMore: "Charger plus",
+                loadingMore: "Chargement...",
+                allEntriesLoaded: "Toutes les entrées sont chargées.",
+                statusOpen: "Ouvert",
+                statusInProgress: "En cours",
+                statusCompleted: "Terminé",
+                statusCompletedAtCustomer: "Réparé chez le client",
+                noOne: "Personne",
+                totalRepairs: "Total des réparations",
+                openCases: "Cas ouverts",
+                casesPerHouse: "Cas par site",
+                mostCommonErrors: "Pannes les plus fréquentes (Top 5)",
+                editEntry: "Modifier l'entrée",
+                commentHistory: "Historique des commentaires",
+                noCommentsYet: "Aucun commentaire pour le moment.",
+                addCommentPlaceholder: "Ajouter un nouveau commentaire...",
+                addCommentButton: "Ajouter un commentaire",
+                cancelButton: "Annuler",
+                saveButton: "Enregistrer",
+                manageUsers: "Gérer les utilisateurs",
+                addUserInstructionTitle: "Instructions pour l'ajout",
+                addUserStep1: `Ouvrez la <a href="https://console.firebase.google.com/" target="_blank" class="underline hover:text-blue-600">console Firebase</a>.`,
+                addUserStep2: "Authentication → Users → Add user.",
+                addUserStep3: "Créez un utilisateur avec e-mail & mot de passe.",
+                addUserStep4: "Entrez le même e-mail ci-dessous et assignez un rôle.",
+                addUserRoleTitle: "Enregistrer le rôle de l'utilisateur dans la base de données",
+                newUserEmailPlaceholder: "E-mail du nouvel utilisateur",
+                isAdminLabel: "Est administrateur?",
+                saveRoleButton: "Enregistrer le rôle",
+                existingUsers: "Utilisateurs existants",
+                closeButton: "Fermer",
+                newHouseNamePlaceholder: "Entrez un nouveau nom de site",
+                manageTechnicians: "Gérer les techniciens",
+                newTechnicianNamePlaceholder: "Entrez un nouveau technicien",
+                scanQrCode: "Scanner le code QR",
+                cameraLabel: "Caméra",
+                torchOn: "Lampe de poche ON",
+                torchOff: "Lampe de poche OFF",
+                zoomLabel: "Zoom",
+                zoomFallbackNote: "Note: L'appareil ne supporte pas le zoom matériel, un zoom visuel est utilisé.",
+                restartButton: "Redémarrer",
+                aiKnowledgeBase: "Base de connaissances IA",
+                confirmAction: "Confirmer l'action",
+                analyzeIpeiTooltip: "Analyser l'historique IPEI avec l'IA",
+                searchKbTooltip: "Rechercher dans la base de connaissances IA",
+                emailForBossTooltip: "Créer un e-mail pour le chef avec l'IA",
+                notifRepairAdded: "Réparation ajoutée avec succès.",
+                notifConfirmDelete: (item) => `Voulez-vous vraiment supprimer l'entrée de réparation pour "${item}"?`,
+                notifHousesLoading: 'Chargement des sites en cours, veuillez patienter.',
+                notifFillHouseAndDevice: 'Veuillez remplir le site et l\'appareil.',
+                notifUnsavedComment: 'Vous avez un commentaire non ajouté. Veuillez cliquer sur "Ajouter un commentaire" avant de sauvegarder.',
+                notifChangesSaved: 'Modifications enregistrées.',
+                notifEntryDeleted: 'Entrée supprimée.',
+                notifDeleteError: "Erreur: L'entrée n'a pas pu être supprimée.",
+                notifNoCamera: 'Aucune caméra trouvée.',
+                notifScannerStartError: 'Le scanner n\'a pas pu être démarré.',
+                notifCameraStartError: 'La caméra n\'a pas pu être démarrée. Vérifiez les autorisations.',
+                notifQrSuccess: 'Code QR traité avec succès!',
+                notifQrError: 'Le code QR n\'a pas pu être traité.',
+                notifTorchError: 'Lampe de poche non supportée.',
+                notifCommentEmpty: 'Le commentaire ne peut pas être vide.',
+                notifNowOnline: 'Vous êtes de nouveau en ligne. Les données sont en cours de synchronisation.',
+                notifNowOffline: 'Vous êtes maintenant hors ligne. Les modifications sont enregistrées localement.',
+                aiSuggestions: "Suggestions de l'IA",
+                enterFullscreen: "Plein écran",
+                exitFullscreen: "Quitter le plein écran",
+                aiScanActive: "Scan IA en cours..."
+            }
+        }
+      }
+    },
+    watch: {
+      qrCodeInput(newValue){
+        if(this.qrScanTimer) clearTimeout(this.qrScanTimer);
+        if(newValue){ this.qrScanTimer = setTimeout(()=>{ this.processQRCode(newValue); }, 200); }
+      },
+      showScanner(isShowing) {
+        if (!isShowing) {
+            this.cleanupScanner();
+        } else {
+            this.$nextTick(() => this.initializeScanner());
+        }
+      },
+      zoomLevel() {
+        if (this.html5QrCode?.isScanning && this.cameraZoomCapabilities) this.applyZoom();
+      },
+      cssZoomLevel() {
+        const video = document.querySelector("#qr-reader video");
+        if (video) {
+          video.style.transform = "scale(" + this.cssZoomLevel + ")";
+          video.style.transformOrigin = "center";
+        }
+      },
+      currentView(newView) {
+        if (newView === 'dashboard' && this.allRepairsForStats.length === 0) {
+            this.loadAllRepairsForStats();
+        }
+      },
+      isOnline(newStatus) {
+        if (newStatus) {
+            this.showNotification(this.t.notifNowOnline, 'success');
+        } else {
+            this.showNotification(this.t.notifNowOffline, 'info');
+        }
+      }
+    },
+    computed: {
+      t() {
+        return this.translations[this.currentLanguage];
+      },
+      tableHeaders() {
+        return this.t.tableHeaders;
+      },
+      sortedAndFilteredRepairs() {
+        let filtered = this.repairs;
+        if (this.filter.house) {
+            filtered = filtered.filter(r => r.house === this.filter.house);
+        }
+        if (this.filter.search) {
+            const s = this.filter.search.toLowerCase();
+            filtered = filtered.filter(r => Object.values(r).some(v => String(v).toLowerCase().includes(s)));
+        }
+        
+        if (this.sortKey) {
+            const sorted = [...filtered];
+            sorted.sort((a, b) => {
+                let valA = a[this.sortKey];
+                let valB = b[this.sortKey];
+                
+                // Handle potential undefined values for sorting
+                if (valA === undefined || valA === null) valA = '';
+                if (valB === undefined || valB === null) valB = '';
+
+                if (typeof valA === 'string') valA = valA.toLowerCase();
+                if (typeof valB === 'string') valB = valB.toLowerCase();
+                
+                if (valA < valB) return this.sortOrder === 'asc' ? -1 : 1;
+                if (valA > valB) return this.sortOrder === 'asc' ? 1 : -1;
+                return 0;
+            });
+            return sorted;
+        }
+        return filtered;
+      },
+      allSelected(){
+        const displayedIds = this.sortedAndFilteredRepairs.map(r => r.id);
+        return displayedIds.length > 0 && displayedIds.every(id => this.selectedRepairs.includes(id));
+      },
+      // Dashboard Stats
+      totalRepairs() { return this.allRepairsForStats.length; },
+      openRepairs() { return this.allRepairsForStats.filter(r => r.status === 'Offen' || r.status === 'In Bearbeitung').length; },
+      repairsByHouse() {
+          const counts = this.allRepairsForStats.reduce((acc, repair) => {
+              acc[repair.house] = (acc[repair.house] || 0) + 1;
+              return acc;
+          }, {});
+          return Object.fromEntries(Object.entries(counts).sort(([,a],[,b]) => b-a));
+      },
+      mostCommonErrors() {
+          const counts = this.allRepairsForStats.reduce((acc, repair) => {
+              if (repair.error) {
+                  const errorKey = repair.error.trim().toLowerCase();
+                  acc[errorKey] = (acc[errorKey] || 0) + 1;
+              }
+              return acc;
+          }, {});
+          return Object.entries(counts).sort(([,a],[,b]) => b-a).slice(0, 5).map(([name, count]) => ({name: this.capitalizeFirstLetter(name), count}));
+      },
+      maxRepairsInStats() {
+          return Math.max(...Object.values(this.repairsByHouse), 1);
+      }
+    },
+    methods: {
+      isUrgent(repair) {
+        if (!repair || !repair.status || !repair.captured_at) return false;
+        if (repair.status !== 'Offen') return false;
+        const capturedDate = new Date(repair.captured_at);
+        const today = new Date();
+        const diffTime = Math.abs(today - capturedDate);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays > 14;
+      },
+      setLanguage(lang) {
+        this.currentLanguage = lang;
+        document.documentElement.lang = lang;
+      },
+      getStatusTranslationKey(status) {
+        const statusMap = {
+            'Offen': 'statusOpen',
+            'In Bearbeitung': 'statusInProgress',
+            'Abgeschlossen': 'statusCompleted',
+            'Beim Kunden repariert': 'statusCompletedAtCustomer'
+        };
+        return statusMap[status] || status;
+      },
+      // --- Notifications ---
+      showNotification(message, type = 'info', duration = 3000) {
+          const id = Date.now() + Math.random();
+          const notification = { id, message, type: `toast-${type}`, show: false };
+          this.notifications.push(notification);
+          
+          this.$nextTick(() => {
+              const toast = this.notifications.find(n => n.id === id);
+              if (toast) toast.show = true;
+          });
+
+          setTimeout(() => {
+              const toast = this.notifications.find(n => n.id === id);
+              if (toast) toast.show = false;
+              setTimeout(() => {
+                  this.notifications = this.notifications.filter(n => n.id !== id);
+              }, 300);
+          }, duration);
+      },
+
+      // --- Status Class ---
+      getStatusClass(status) {
+        switch (status) {
+            case 'Abgeschlossen':
+            case 'Beim Kunden repariert':
+                return 'bg-green-100 text-green-800';
+            case 'In Bearbeitung':
+                return 'bg-blue-100 text-blue-800';
+            case 'Offen':
+                return 'bg-red-100 text-red-800';
+            default:
+                return 'bg-gray-100 text-gray-800';
+        }
+      },
+
+      // --- Confirmation Modal ---
+      confirmDelete(type, item) {
+          if (type === 'repair') {
+              this.confirmMessage = this.t.notifConfirmDelete(item.fiche || 'Unbekannt');
+              this.confirmAction = () => this.deleteRepair(item.id);
+          } else if (type === 'user') {
+              this.confirmMessage = `Möchten Sie den Benutzer "${item.email}" wirklich löschen?`; // Needs translation
+              this.confirmAction = () => this.deleteUser(item.id);
+          } else if (type === 'house') {
+              this.confirmMessage = `Möchten Sie das Haus "${item}" wirklich löschen?`; // Needs translation
+              this.confirmAction = () => this.deleteHouse(item);
+          } else if (type === 'technician') {
+              this.confirmMessage = `Möchten Sie den Techniker "${item}" wirklich löschen?`; // Needs translation
+              this.confirmAction = () => this.deleteTechnician(item);
+          }
+          this.showConfirmModal = true;
+      },
+      executeConfirm() {
+          if (typeof this.confirmAction === 'function') this.confirmAction();
+          this.cancelConfirm();
+      },
+      cancelConfirm() {
+          this.showConfirmModal = false;
+          this.confirmMessage = '';
+          this.confirmAction = null;
+      },
+
+      // --- Auth & Initial Load ---
+      async login(){
+        this.loginForm.error = '';
+        try { await signInWithEmailAndPassword(auth, this.loginForm.email, this.loginForm.password); }
+        catch(e){ this.loginForm.error = 'E-Mail oder Passwort ist falsch.'; console.error(e); }
+      },
+      async logout(){ await signOut(auth); },
+
+      // --- Data Management ---
+      async addRepair(){
+        if (this.houses.length === 0) {
+            this.showNotification(this.t.notifHousesLoading, 'error');
+            return;
+        }
+        if(!this.newEntry.house || !this.newEntry.fiche){ 
+            this.showNotification(this.t.notifFillHouseAndDevice, 'error'); 
+            return; 
+        }
+        const lastSelectedHouse = this.newEntry.house;
+        const dataToSave = JSON.parse(JSON.stringify(this.newEntry));
+        await addDoc(collection(db,'repairs'), { ...dataToSave, cost:0, createdAt: serverTimestamp() });
+        Object.assign(this.newEntry, { captured_at:new Date().toISOString().slice(0,10), date:'', fiche:'', fiche_engagement:'', ipei:'', pid:'', error:'', status:'Offen', comments: [], techniker: '' });
+        this.newEntry.house = lastSelectedHouse;
+        this.showNotification(this.t.notifRepairAdded, 'success');
+      },
+      editRepair(r){ 
+        this.currentEdit = JSON.parse(JSON.stringify(r));
+        if (!this.currentEdit.comments) this.currentEdit.comments = [];
+        if (!this.currentEdit.techniker) this.currentEdit.techniker = '';
+        this.showEditModal = true; 
+      },
+      async saveEdit(){
+        if (this.newCommentText.trim()) {
+            this.showNotification(this.t.notifUnsavedComment, 'error', 5000);
+            return;
+        }
+        const ref = doc(db,'repairs',this.currentEdit.id);
+        const data = { ...JSON.parse(JSON.stringify(this.currentEdit)) }; 
+        delete data.id;
+        await updateDoc(ref, data);
+        this.showEditModal = false;
+        this.showNotification(this.t.notifChangesSaved, 'success');
+      },
+      async deleteRepair(repairId){
+        try {
+          await deleteDoc(doc(db, 'repairs', repairId));
+          this.showNotification(this.t.notifEntryDeleted, 'info');
+        } catch(error) {
+          console.error("Error during deletion:", error);
+          this.showNotification(this.t.notifDeleteError, 'error');
+        }
+      },
+      toggleSelectAll(e){
+        const displayedIds = this.sortedAndFilteredRepairs.map(r => r.id);
+        if (e.target.checked) {
+          this.selectedRepairs = [...new Set([...this.selectedRepairs, ...displayedIds])];
+        } else {
+          this.selectedRepairs = this.selectedRepairs.filter(id => !displayedIds.includes(id));
+        }
+      },
+      
+      // --- QR Code (REVISED & STABILIZED) ---
+      handleQrKeyDown(event) {
+        if (event.ctrlKey) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+      },
+      async startScanner() {
+          this.showScanner = true;
+          await this.$nextTick();
+          try {
+              if (!this.html5QrCode) {
+                this.html5QrCode = new Html5Qrcode("qr-reader", { formatsToSupport: [0] });
+              }
+              const devices = await Html5Qrcode.getCameras();
+              if (devices && devices.length) {
+                  this.cameras = devices;
+                  if (!this.selectedCameraId || !this.cameras.some(c => c.id === this.selectedCameraId)) {
+                      const rearCamera = devices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rück'));
+                      this.selectedCameraId = rearCamera ? rearCamera.id : devices[0].id;
+                  }
+              } else {
+                   this.showNotification(this.t.notifNoCamera, 'error');
+                   this.showScanner = false;
+                   return;
+              }
+              this.restartScanner();
+          } catch (err) {
+              console.error("Fehler beim Initialisieren des Scanners:", err);
+              this.showNotification(this.t.notifScannerStartError, 'error');
+              this.showScanner = false;
+          }
+      },
+      async restartScanner() {
+          if (!this.html5QrCode || !this.selectedCameraId) return;
+          try {
+              if (this.html5QrCode.isScanning) {
+                await this.stopScanner(false); // Stop without closing modal
+              }
+              const config = {
+                  fps: 2, 
+                  qrbox: { width: 250, height: 250 }
+              };
+              await this.html5QrCode.start(
+                  this.selectedCameraId, config,
+                  (decodedText) => {}, // local scan success (disabled)
+                  (errorMessage) => {}  // local scan failure (ignored)
+              );
+              
+              // Start AI scanning immediately
+              this.isScanningWithAi = true;
+              this.scanIntervalId = setInterval(this.captureAndAnalyzeFrame, 2000);
+
+              setTimeout(() => this.updateCameraCapabilities(), 500);
+          } catch (err) {
+              console.error("Fehler beim Neustart des Scanners:", err);
+              this.showNotification(this.t.notifCameraStartError, 'error');
+          }
+      },
+      async updateCameraCapabilities() {
+          try {
+              const track = this.html5QrCode.getRunningTrack();
+              if (track) {
+                  const capabilities = track.getCapabilities();
+                  this.hasTorch = !!capabilities.torch;
+                  if (capabilities.zoom) {
+                      this.cameraZoomCapabilities = capabilities.zoom;
+                      if (this.zoomLevel < capabilities.zoom.min) this.zoomLevel = capabilities.zoom.min;
+                  } else { this.cameraZoomCapabilities = null; }
+              }
+          } catch (err) { console.error("Fehler bei Kamera-Fähigkeiten:", err); }
+      },
+      onScanSuccess(decodedText) {
+          this.processQRCode(decodedText);
+          this.showNotification(this.t.notifQrSuccess, 'success');
+          this.stopScanner();
+      },
+      async stopScanner(closeModal = true) {
+          if (this.scanIntervalId) {
+            clearInterval(this.scanIntervalId);
+            this.scanIntervalId = null;
+          }
+          this.isScanningWithAi = false;
+          try {
+              if (this.html5QrCode && this.html5QrCode.isScanning) {
+                  await this.html5QrCode.stop();
+              }
+          } catch (err) {
+              if (!String(err).includes("not running")) console.error("Fehler beim Stoppen:", err);
+          } finally {
+              if (closeModal) this.showScanner = false;
+          }
+      },
+      cleanupScanner() {
+          this.torchOn = false; this.hasTorch = false; this.zoomLevel = 1;
+          this.cssZoomLevel = 1; this.cameraZoomCapabilities = null;
+      },
+      async toggleTorch() {
+          if (this.html5QrCode && this.html5QrCode.isScanning && this.hasTorch) {
+              this.torchOn = !this.torchOn;
+              try {
+                  await this.html5QrCode.applyVideoConstraints({ advanced: [{ torch: this.torchOn }] });
+              } catch(err) { this.showNotification(this.t.notifTorchError, 'error'); }
+          }
+      },
+      applyZoom() {
+          if (this.html5QrCode && this.html5QrCode.isScanning && this.cameraZoomCapabilities) {
+              this.html5QrCode.applyVideoConstraints({ advanced: [{ zoom: this.zoomLevel }] });
+          }
+      },
+      processQRCode(t){
+        const p = this.parseQRCodeData(t||'');
+        if(p && (p.phone_model || p.ipei || p.pid)){
+          const { name, code } = resolveModelName(p.phone_model);
+          this.newEntry.fiche = name;
+          this.lastScannedModelCode = code;
+          if(p.date) this.newEntry.date = p.date;
+          if(p.ipei) this.newEntry.ipei = p.ipei;
+          if(p.pid) this.newEntry.pid = p.pid;
+          this.qrCodeInput = '';
+        } else {
+          this.showNotification(this.t.notifQrError, 'error');
+        }
+      },
+      parseQRCodeData(text) {
+          const cleanedText = String(text || '').replace(/[\x00-\x1F\x7F-\x9F]/g, "").trim();
+          if (!cleanedText) return null;
+
+          let parsed = { phone_model: "", date: "", ipei: "", pid: "" };
+
+          const extractValue = (data, code) => {
+              const startIndex = data.indexOf(code);
+              if (startIndex === -1) return "";
+              let valuePart = data.substring(startIndex + code.length);
+              const nextCodeMatch = valuePart.match(/\s*\d+[A-Z]/);
+              if (nextCodeMatch) {
+                  valuePart = valuePart.substring(0, nextCodeMatch.index);
+              }
+              return valuePart.trim();
+          };
+
+          if (cleanedText.includes('1P')) {
+              parsed.phone_model = extractValue(cleanedText, '1P');
+              parsed.date = extractValue(cleanedText, '10D');
+              parsed.ipei = extractValue(cleanedText, '22S');
+              parsed.pid = extractValue(cleanedText, '34S');
+          } else if (cleanedText.includes(',')) {
+              const parts = cleanedText.split(',');
+              parsed.phone_model = (parts[0]||'').trim();
+              parsed.ipei = (parts[1]||'').trim();
+              parsed.pid = (parts[2]||'').trim();
+          } else if (modelMap[cleanedText] || /^\d{8}$/.test(cleanedText)) {
+              parsed.phone_model = cleanedText;
+          } else if (/^\d{14,15}$/.test(cleanedText)) {
+              parsed.ipei = cleanedText;
+          }
+          
+          if (!parsed.phone_model && !parsed.ipei && !parsed.pid) {
+              return null;
+          }
+
+          const formatIpei = (ipei) => {
+              if (!ipei || typeof ipei !== 'string') return ipei;
+              const cleanIpei = ipei.replace(/\s/g, '');
+              if (cleanIpei.length >= 14 && cleanIpei.startsWith('05003')) {
+                  return `${cleanIpei.slice(0, 5)} ${cleanIpei.slice(5, 13)} ${cleanIpei.slice(13)}`;
+              }
+              return cleanIpei;
+          };
+
+          parsed.ipei = formatIpei(parsed.ipei);
+          
+          if (parsed.date && /W/.test(parsed.date) && parsed.date.length > 5) {
+              parsed.date = parsed.date.slice(0, 5);
+          }
+
+          return parsed;
+      },
+
+      // --- Admin Management ---
+      async addUserRole(){
+        if(!this.newUser.email){ this.showNotification("Bitte E-Mail angeben.", 'error'); return; }
+        try{
+          const qUsers = query(collection(db,'users'), where('email','==',this.newUser.email));
+          const existing = await getDocs(qUsers);
+          if(!existing.empty){ this.showNotification("Ein Benutzer mit dieser E-Mail existiert bereits.", 'error'); return; }
+          await addDoc(collection(db,'users'), JSON.parse(JSON.stringify(this.newUser)));
+          this.showNotification("Rolle für " + this.newUser.email + " gespeichert.", 'success');
+          this.newUser.email=''; this.newUser.isAdmin=false;
+        }catch(e){ this.showNotification("Fehler: "+e.message, 'error'); }
+      },
+      async deleteUser(userId){ await deleteDoc(doc(db,'users',userId)); },
+      async addHouse(){
+        if(this.newHouseName && !this.houses.includes(this.newHouseName)){
+          try {
+            const updated=[...this.houses, this.newHouseName];
+            await setDoc(doc(db,'config','houses'), { list: updated });
+            this.newHouseName='';
+            this.showNotification('Haus erfolgreich hinzugefügt.', 'success');
+          } catch(e) {
+            this.showNotification('Fehler beim Speichern des Hauses.', 'error');
+            console.error(e);
+          }
+        }
+      },
+      async deleteHouse(houseName){
+        const updated=this.houses.filter(x=>x!==houseName);
+        await setDoc(doc(db,'config','houses'), { list: updated });
+      },
+      async addTechnician(){
+        if(this.newTechnicianName && !this.technikerList.includes(this.newTechnicianName)){
+          try {
+            const updated=[...this.technikerList, this.newTechnicianName];
+            await setDoc(doc(db,'config','technicians'), { list: updated });
+            this.newTechnicianName='';
+            this.showNotification('Techniker erfolgreich hinzugefügt.', 'success');
+          } catch(e) {
+            this.showNotification('Fehler beim Speichern des Technikers.', 'error');
+            console.error(e);
+          }
+        }
+      },
+      async deleteTechnician(technicianName){
+        const updated=this.technikerList.filter(x=>x!==technicianName);
+        await setDoc(doc(db,'config','technicians'), { list: updated });
+      },
+      
+      // --- Helper Functions ---
+      addComment() {
+          if (!this.newCommentText.trim()) {
+              this.showNotification(this.t.notifCommentEmpty, 'error');
+              return;
+          }
+          if (!this.currentEdit.comments) {
+              this.currentEdit.comments = [];
+          }
+          this.currentEdit.comments.push({
+              text: this.newCommentText,
+              user: this.user.email,
+              timestamp: Date.now()
+          });
+          this.newCommentText = '';
+      },
+      formatTimestamp(ts) {
+          if (!ts) return '';
+          const date = ts.toDate ? ts.toDate() : new Date(ts);
+          if (isNaN(date)) return '';
+          return date.toLocaleString('de-DE', {
+              day: '2-digit', month: '2-digit', year: 'numeric',
+              hour: '2-digit', minute: '2-digit'
+          });
+      },
+
+      // --- Data Listeners & Pagination ---
+      listenToRepairs() {
+          const q = query(collection(db, 'repairs'), orderBy('createdAt', 'desc'));
+          onSnapshot(q, (snapshot) => {
+            this.repairs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+          }, (error) => {
+            console.error("Fehler beim Laden der Reparaturen:", error);
+          });
+      },
+      async loadAllRepairsForStats() {
+          const q = query(collection(db, 'repairs'), orderBy('createdAt', 'desc'));
+          const querySnapshot = await getDocs(q);
+          this.allRepairsForStats = querySnapshot.docs.map(d => d.data());
+      },
+      listenToConfig(docId, listName) {
+          onSnapshot(doc(db, 'config', docId), (d) => {
+              if (d.exists() && d.data().list) {
+                  this[listName] = d.data().list;
+                  if (listName === 'houses' && !this.newEntry.house && this.houses.length > 0) {
+                      this.newEntry.house = this.houses[0];
+                  }
+              }
+          });
+      },
+      capitalizeFirstLetter(string) {
+          return string.charAt(0).toUpperCase() + string.slice(1);
+      },
+      toggleFullscreen() {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {
+                console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+            });
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+        }
+      },
+      handleFullscreenChange() {
+          this.isFullscreen = !!document.fullscreenElement;
+      },
+      sortBy(key) {
+        if (this.sortKey === key) {
+            this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
+        } else {
+            this.sortKey = key;
+            this.sortOrder = 'asc';
+        }
+      }
+    },
+    async mounted(){
+      window.addEventListener('online', () => this.isOnline = true);
+      window.addEventListener('offline', () => this.isOnline = false);
+      document.addEventListener('fullscreenchange', this.handleFullscreenChange);
+
+      const authCheck = new Promise(resolve => {
+        onAuthStateChanged(auth, async (u)=>{
+          if(u){
+            this.user = { loggedIn:true, email:u.email, uid:u.uid, isAdmin:false };
+            const snap = await getDocs(query(collection(db,'users'), where('email','==',u.email)));
+            this.user.isAdmin = !snap.empty ? (snap.docs[0].data().isAdmin || false) : false;
+            
+            this.listenToRepairs();
+            this.listenToConfig('houses', 'houses');
+            this.listenToConfig('technicians', 'technikerList');
+            if(this.user.isAdmin) onSnapshot(collection(db,'users'), s => { this.userList = s.docs.map(d => ({ id:d.id, ...d.data() })); });
+
+            if (isMobileDevice) {
+                this.toggleFullscreen();
+            }
+          } else {
+            this.user = { loggedIn:false, email:null, uid:null, isAdmin:false };
+            this.repairs = []; this.userList = []; this.houses = []; this.technikerList = [];
+          }
+          resolve();
+        });
+      });
+
+      const minDelay = new Promise(resolve => setTimeout(resolve, 1500)); // Reduced delay
+      await Promise.all([authCheck, minDelay]);
+      this.isAuthReady = true;
+    }
+  }).mount('#app');
+</script>
+</body>
+</html>
+
