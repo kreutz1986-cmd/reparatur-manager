@@ -587,9 +587,9 @@
   // Firebase SDKs
   import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
   import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
-  import { getFirestore, collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, serverTimestamp, query, getDocs, setDoc, orderBy, where, limit, startAfter, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+  import { getFirestore, collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, serverTimestamp, query, getDocs, setDoc, orderBy, where, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
   import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-functions.js";
-  
+
   // Vue 3
   import { createApp } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
 
@@ -605,7 +605,12 @@
   const firebaseApp = initializeApp(firebaseConfig);
   const auth = getAuth(firebaseApp);
   const db = getFirestore(firebaseApp);
-  const functions = getFunctions(firebaseApp, "europe-west1");
+  const functions = getFunctions(firebaseApp, 'europe-west1');
+
+  // Callable functions
+  const callGeminiText = httpsCallable(functions, 'callGeminiText');
+  const callGeminiForQrCode = httpsCallable(functions, 'callGeminiForQrCode');
+
 
   // Enable Firestore offline persistence only on mobile devices
   const isMobileDevice = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -1317,35 +1322,30 @@
       async openAiModal(mode, repairData) {
           this.aiResponse = '';
           this.aiQuery = '';
-          let functionToCall;
-
           if (mode === 'analyze_ipei') {
               this.aiModalTitle = this.t.analyzeIpeiTooltip;
               if (!repairData.ipei) { this.showNotification('Bitte geben Sie zuerst eine IPEI ein.', 'error'); return; }
               this.aiQuery = `Analysiere die Reparaturhistorie für das Gerät mit der IPEI "${repairData.ipei}". Fasse frühere Probleme zusammen, identifiziere wiederkehrende Fehler und gib eine Empfehlung für die aktuelle Reparatur.`;
-              functionToCall = httpsCallable(functions, 'callGemini');
           } else if (mode === 'search_error') {
               this.aiModalTitle = this.t.searchKbTooltip;
               if (!repairData.error) { this.showNotification('Bitte geben Sie zuerst einen Fehler an.', 'error'); return; }
               this.aiQuery = `Suche in der Wissensdatenbank nach Lösungen für das folgende Problem an einem Gerät vom Typ "${repairData.fiche || 'Unbekannt'}": "${repairData.error}". Gib eine Schritt-für-Schritt-Anleitung zur Fehlerbehebung.`;
-              functionToCall = httpsCallable(functions, 'callGemini');
           } else if (mode === 'generate_email') {
               this.aiModalTitle = this.t.emailForBossTooltip;
               this.aiQuery = `Erstelle eine kurze, professionelle E-Mail an den Vorgesetzten über den Reparaturfall:\n- Gerät: ${repairData.fiche}\n- IPEI: ${repairData.ipei}\n- Fehler: ${repairData.error}\n- Aktueller Status: ${repairData.status}\n- Nächste Schritte: [Platzhalter für nächste Schritte]\n\nDie E-Mail soll den Sachverhalt klar darstellen.`;
-              functionToCall = httpsCallable(functions, 'callGemini');
           }
           
           this.showAiModal = true;
           this.isAiLoading = true;
 
           try {
-              const result = await functionToCall({ prompt: this.aiQuery });
-              this.aiResponse = result.data.response;
-          } catch (error) {
-              this.aiResponse = `Ein Fehler ist aufgetreten: ${error.message}`;
-              console.error("AI Cloud Function Error:", error);
+            const result = await callGeminiText({ prompt: this.aiQuery });
+            this.aiResponse = result.data.response;
+          } catch(error) {
+             this.aiResponse = `Ein Fehler ist aufgetreten: ${error.message || 'Unbekannter Fehler'}`;
+             console.error("AI Error:", error);
           } finally {
-              this.isAiLoading = false;
+            this.isAiLoading = false;
           }
       },
        copyToClipboard(text) {
@@ -1381,7 +1381,10 @@
             const context = canvas.getContext('2d');
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
             const base64ImageData = canvas.toDataURL('image/jpeg').split(',')[1];
-            const decodedText = await this.callCloudFunctionForQrCode(base64ImageData);
+            
+            const result = await callGeminiForQrCode({ image: base64ImageData });
+            const decodedText = result.data.response;
+
             if (decodedText && decodedText.toUpperCase() !== 'NO_QR_CODE') {
                 this.onScanSuccess(decodedText);
             } else {
@@ -1405,7 +1408,9 @@
         reader.onload = async (e) => {
             try {
                 const base64ImageData = e.target.result.split(',')[1];
-                const decodedText = await this.callCloudFunctionForQrCode(base64ImageData);
+                const result = await callGeminiForQrCode({ image: base64ImageData });
+                const decodedText = result.data.response;
+
                 if (decodedText && decodedText.toUpperCase() !== 'NO_QR_CODE') {
                     this.processQRCode(decodedText);
                     this.showNotification(this.t.notifQrSuccess, 'success');
@@ -1424,16 +1429,6 @@
             event.target.value = null;
         };
         reader.readAsDataURL(file);
-    },
-    async callCloudFunctionForQrCode(base64ImageData) {
-        try {
-            const callQrFunction = httpsCallable(functions, 'callGeminiForQrCode');
-            const result = await callQrFunction({ image: base64ImageData });
-            return result.data.response;
-        } catch (error) {
-            console.error('Fehler bei der Kommunikation mit der QR-Cloud-Function:', error);
-            throw error;
-        }
     },
 
       // --- Admin Management ---
