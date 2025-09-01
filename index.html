@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Reparatur Manager Online v1.34</title>
+  <title>Reparatur Manager Online v1.35</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -18,13 +18,11 @@
       .table-row-selected { background-color: #eef2ff; }
       .table-row-urgent { background-color: #fee2e2; }
 
-      /* QR Scanner Fixes for PC Zoom */
       #qr-reader { width: 100%; max-width: 560px; border: 2px solid #4f46e5; border-radius: .5rem; overflow: hidden; transform: scale(1) !important; position: relative; }
       #qr-reader video { max-width: 100%; will-change: transform; background:#000; object-fit: cover; }
 
       .spinner { border: 4px solid rgba(0, 0, 0, 0.1); width: 36px; height: 36px; border-radius: 50%; border-left-color: #4f46e5; animation: spin 1s ease infinite; }
       
-      /* Toast Notifications */
       .toast-container { position: fixed; top: 1.5rem; right: 1.5rem; z-index: 100; display: flex; flex-direction: column; gap: 0.75rem; }
       .toast { display: flex; align-items: center; padding: 1rem; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -1px rgba(0,0,0,.06); transform: translateX(100%); opacity: 0; transition: all 0.3s ease-in-out; }
       .toast.show { transform: translateX(0); opacity: 1; }
@@ -32,7 +30,6 @@
       .toast-success { background-color: #22c55e; color: white; }
       .toast-error { background-color: #ef4444; color: white; }
 
-      /* New, improved Fallout Loader */
       .fallout-loader {
         display: flex;
         flex-direction: column;
@@ -591,6 +588,7 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
   import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
   import { getFirestore, collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, serverTimestamp, query, getDocs, setDoc, orderBy, where, limit, startAfter, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+  import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-functions.js";
   
   // Vue 3
   import { createApp } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
@@ -607,6 +605,7 @@
   const firebaseApp = initializeApp(firebaseConfig);
   const auth = getAuth(firebaseApp);
   const db = getFirestore(firebaseApp);
+  const functions = getFunctions(firebaseApp, "europe-west1");
 
   // Enable Firestore offline persistence only on mobile devices
   const isMobileDevice = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -634,7 +633,7 @@
   const appConfig = {
     data() {
       return {
-        version: '1.34',
+        version: '1.35',
         isAuthReady: false,
         user: { loggedIn: false, email: null, uid: null, isAdmin: false },
         loginForm: { email: '', password: '', error: '' },
@@ -1315,57 +1314,39 @@
       },
       
       // --- AI Methods ---
-      openAiModal(mode, repairData) {
+      async openAiModal(mode, repairData) {
           this.aiResponse = '';
           this.aiQuery = '';
+          let functionToCall;
+
           if (mode === 'analyze_ipei') {
               this.aiModalTitle = this.t.analyzeIpeiTooltip;
               if (!repairData.ipei) { this.showNotification('Bitte geben Sie zuerst eine IPEI ein.', 'error'); return; }
               this.aiQuery = `Analysiere die Reparaturhistorie für das Gerät mit der IPEI "${repairData.ipei}". Fasse frühere Probleme zusammen, identifiziere wiederkehrende Fehler und gib eine Empfehlung für die aktuelle Reparatur.`;
+              functionToCall = httpsCallable(functions, 'callGemini');
           } else if (mode === 'search_error') {
               this.aiModalTitle = this.t.searchKbTooltip;
               if (!repairData.error) { this.showNotification('Bitte geben Sie zuerst einen Fehler an.', 'error'); return; }
               this.aiQuery = `Suche in der Wissensdatenbank nach Lösungen für das folgende Problem an einem Gerät vom Typ "${repairData.fiche || 'Unbekannt'}": "${repairData.error}". Gib eine Schritt-für-Schritt-Anleitung zur Fehlerbehebung.`;
+              functionToCall = httpsCallable(functions, 'callGemini');
           } else if (mode === 'generate_email') {
               this.aiModalTitle = this.t.emailForBossTooltip;
               this.aiQuery = `Erstelle eine kurze, professionelle E-Mail an den Vorgesetzten über den Reparaturfall:\n- Gerät: ${repairData.fiche}\n- IPEI: ${repairData.ipei}\n- Fehler: ${repairData.error}\n- Aktueller Status: ${repairData.status}\n- Nächste Schritte: [Platzhalter für nächste Schritte]\n\nDie E-Mail soll den Sachverhalt klar darstellen.`;
+              functionToCall = httpsCallable(functions, 'callGemini');
           }
           
           this.showAiModal = true;
           this.isAiLoading = true;
 
-          this.callGeminiApi(this.aiQuery)
-              .then(response => { this.aiResponse = response; })
-              .catch(error => {
-                  this.aiResponse = `Ein Fehler ist aufgetreten: ${error.message}`;
-                  console.error("AI API Error:", error);
-              })
-              .finally(() => { this.isAiLoading = false; });
-      },
-      async callGeminiApi(prompt) {
-        const apiKey = ""; // Wird von der Umgebung bereitgestellt
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-        const payload = {
-            contents: [{ parts: [{ text: prompt }] }],
-        };
-        try {
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            if (!response.ok) {
-                const errorBody = await response.json();
-                console.error('API Error Response:', errorBody);
-                throw new Error(`API-Fehler: ${response.status} ${response.statusText}`);
-            }
-            const result = await response.json();
-            const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-            return text?.trim();
-        } catch (error) {
-            console.error('Fehler bei der Kommunikation mit der Gemini API:', error);
-            throw error;
-        }
+          try {
+              const result = await functionToCall({ prompt: this.aiQuery });
+              this.aiResponse = result.data.response;
+          } catch (error) {
+              this.aiResponse = `Ein Fehler ist aufgetreten: ${error.message}`;
+              console.error("AI Cloud Function Error:", error);
+          } finally {
+              this.isAiLoading = false;
+          }
       },
        copyToClipboard(text) {
             const textArea = document.createElement("textarea");
@@ -1400,7 +1381,7 @@
             const context = canvas.getContext('2d');
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
             const base64ImageData = canvas.toDataURL('image/jpeg').split(',')[1];
-            const decodedText = await this.callGeminiForQrCode(base64ImageData);
+            const decodedText = await this.callCloudFunctionForQrCode(base64ImageData);
             if (decodedText && decodedText.toUpperCase() !== 'NO_QR_CODE') {
                 this.onScanSuccess(decodedText);
             } else {
@@ -1413,7 +1394,7 @@
             this.isScanningWithAi = false;
         }
     },
-    handleFileUpload(event) {
+    async handleFileUpload(event) {
         const file = event.target.files[0];
         if (!file || !file.type.startsWith('image/')) {
             this.showNotification(this.t.notifSelectImage, 'error');
@@ -1424,7 +1405,7 @@
         reader.onload = async (e) => {
             try {
                 const base64ImageData = e.target.result.split(',')[1];
-                const decodedText = await this.callGeminiForQrCode(base64ImageData);
+                const decodedText = await this.callCloudFunctionForQrCode(base64ImageData);
                 if (decodedText && decodedText.toUpperCase() !== 'NO_QR_CODE') {
                     this.processQRCode(decodedText);
                     this.showNotification(this.t.notifQrSuccess, 'success');
@@ -1444,33 +1425,13 @@
         };
         reader.readAsDataURL(file);
     },
-    async callGeminiForQrCode(base64ImageData) {
-        const apiKey = ""; // Wird von der Umgebung bereitgestellt
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-        const payload = {
-            contents: [{
-                parts: [
-                    { text: "Finde und dekodiere den QR-Code im Bild. Antworte NUR mit dem reinen Textinhalt des QR-Codes. Wenn kein QR-Code gefunden wird, antworte mit 'NO_QR_CODE'." },
-                    { inlineData: { mimeType: "image/jpeg", data: base64ImageData } }
-                ]
-            }],
-        };
+    async callCloudFunctionForQrCode(base64ImageData) {
         try {
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            if (!response.ok) {
-                const errorBody = await response.json();
-                console.error('API Error Response:', errorBody);
-                throw new Error(`API-Fehler: ${response.status} ${response.statusText}`);
-            }
-            const result = await response.json();
-            const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-            return text?.trim();
+            const callQrFunction = httpsCallable(functions, 'callGeminiForQrCode');
+            const result = await callQrFunction({ image: base64ImageData });
+            return result.data.response;
         } catch (error) {
-            console.error('Fehler bei der Kommunikation mit der Gemini API:', error);
+            console.error('Fehler bei der Kommunikation mit der QR-Cloud-Function:', error);
             throw error;
         }
     },
