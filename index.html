@@ -1,10 +1,9 @@
-<!-- VERSION MIT PRO-FEATURES & STABILITÄTS-FIXES -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Reparatur Manager Online v1.36</title>
+  <title>Reparatur Manager Online v1.37</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -14,7 +13,7 @@
       [v-cloak] { display: none; }
 
       .modal-backdrop { position: fixed; inset: 0; display: flex; justify-content: center; align-items: center; background-color: rgba(0,0,0,.5); z-index: 50; padding: 1rem; }
-      .modal-content { background: #fff; padding: 2rem; border-radius: .5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -2px rgba(0,0,0,.05); width: 90%; max-width: 640px; max-height: 90vh; overflow-y: auto; }
+      .modal-content { background: #fff; padding: 2rem; border-radius: .5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -2px rgba(0,0,0,.05); width: 90%; max-width: 768px; max-height: 90vh; overflow-y: auto; }
       .table-row-selected { background-color: #eef2ff; }
       .table-row-urgent { background-color: #fee2e2; }
 
@@ -1238,7 +1237,8 @@
           if (!cleanedText) return null;
 
           // Try parsing with dynamic patterns first
-          for (const pattern of this.qrCodePatterns) {
+          for (const item of this.qrCodePatterns) {
+              const pattern = item.pattern;
               const regex = new RegExp('^' + pattern.replace(/<(\w+)>/g, '(.*?)') + '$');
               const match = cleanedText.match(regex);
               
@@ -1289,7 +1289,11 @@
 
           try {
             const result = await callGeminiText({ prompt: this.aiQuery });
-            this.aiResponse = result.data.response;
+            if (result && result.data && result.data.response) {
+                this.aiResponse = result.data.response;
+            } else {
+                throw new Error("Leere oder ungültige Antwort von der KI erhalten.");
+            }
           } catch(error) {
              this.aiResponse = `Ein Fehler ist aufgetreten: ${error.message || 'Unbekannter Fehler'}`;
              console.error("AI Error:", error);
@@ -1332,12 +1336,15 @@
             const base64ImageData = canvas.toDataURL('image/jpeg').split(',')[1];
             
             const result = await callGeminiForQrCode({ image: base64ImageData });
-            const decodedText = result.data.response;
-
-            if (decodedText && decodedText.toUpperCase() !== 'NO_QR_CODE') {
-                this.onScanSuccess(decodedText);
+            if (result && result.data && result.data.response) {
+                const decodedText = result.data.response;
+                if (decodedText && decodedText.toUpperCase() !== 'NO_QR_CODE') {
+                    this.onScanSuccess(decodedText);
+                } else {
+                    this.showNotification('Kein QR-Code im Bild gefunden. Bitte versuchen Sie es erneut.', 'error');
+                }
             } else {
-                this.showNotification('Kein QR-Code im Bild gefunden. Bitte versuchen Sie es erneut.', 'error');
+                throw new Error("Leere oder ungültige Antwort von der KI erhalten.");
             }
         } catch (error) {
             console.error('Fehler bei der Bilderfassung oder KI-Analyse:', error);
@@ -1358,13 +1365,16 @@
             try {
                 const base64ImageData = e.target.result.split(',')[1];
                 const result = await callGeminiForQrCode({ image: base64ImageData });
-                const decodedText = result.data.response;
-
-                if (decodedText && decodedText.toUpperCase() !== 'NO_QR_CODE') {
-                    this.processQRCode(decodedText);
-                    this.showNotification(this.t.notifQrSuccess, 'success');
+                if (result && result.data && result.data.response) {
+                    const decodedText = result.data.response;
+                    if (decodedText && decodedText.toUpperCase() !== 'NO_QR_CODE') {
+                        this.processQRCode(decodedText);
+                        this.showNotification(this.t.notifQrSuccess, 'success');
+                    } else {
+                        this.showNotification('Kein QR-Code im Bild gefunden. Bitte versuchen Sie es erneut.', 'error');
+                    }
                 } else {
-                    this.showNotification('Kein QR-Code im Bild gefunden. Bitte versuchen Sie es erneut.', 'error');
+                    throw new Error("Leere oder ungültige Antwort von der KI erhalten.");
                 }
             } catch (error) {
                 console.error('Fehler bei der Bildanalyse:', error);
@@ -1440,14 +1450,19 @@
         await setDoc(doc(db, 'config', 'deviceModels'), { models: updatedModels });
       },
       async addQrPattern() {
-        if (this.newQrPattern && !this.qrCodePatterns.includes(this.newQrPattern)) {
-          const updatedPatterns = [...this.qrCodePatterns, this.newQrPattern];
+        if (this.newQrPattern && !this.qrCodePatterns.some(p => p.pattern === this.newQrPattern)) {
+          const newPatternObject = {
+              id: Date.now().toString(),
+              name: `Muster ${this.qrCodePatterns.length + 1}`,
+              pattern: this.newQrPattern
+          };
+          const updatedPatterns = [...this.qrCodePatterns, newPatternObject];
           await setDoc(doc(db, 'config', 'qrCodePatterns'), { patterns: updatedPatterns });
           this.newQrPattern = '';
         }
       },
-      async deleteQrPattern(patternToDelete) {
-        const updatedPatterns = this.qrCodePatterns.filter(p => p !== patternToDelete);
+      async deleteQrPattern(patternId) {
+        const updatedPatterns = this.qrCodePatterns.filter(p => p.id !== patternId);
         await setDoc(doc(db, 'config', 'qrCodePatterns'), { patterns: updatedPatterns });
       },
       
@@ -1493,8 +1508,18 @@
       },
       listenToConfig(docId, dataName, fieldName) {
           onSnapshot(doc(db, 'config', docId), (d) => {
-              if (d.exists() && d.data()[fieldName]) {
-                  this[dataName] = d.data()[fieldName];
+              if (d.exists() && d.data() && d.data()[fieldName]) {
+                  let data = d.data()[fieldName];
+                  // Migration logic for old string-based patterns
+                  if (docId === 'qrCodePatterns' && data.length > 0 && typeof data[0] === 'string') {
+                      data = data.map((p, index) => ({
+                          id: Date.now().toString() + index,
+                          name: `Altes Muster ${index + 1}`,
+                          pattern: p
+                      }));
+                  }
+                  this[dataName] = data;
+
                   if (dataName === 'houses' && !this.newEntry.house && this.houses.length > 0) {
                       this.newEntry.house = this.houses[0];
                   }
@@ -1606,7 +1631,4 @@
 </script>
 </body>
 </html>
-" in the document "Reparatur Manager Online v1.36". I am not asking for a summary. I am asking for a fix. I will provide the error message in the user query.
-Error: Cannot read properties of undefined (reading 'data')
-Can you fix this?
 
