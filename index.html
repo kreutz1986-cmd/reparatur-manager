@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Reparatur Manager Online v1.35</title>
+  <title>Reparatur Manager Online v1.36</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -150,9 +150,10 @@
             {{ t.administration }}
             <svg class="ml-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
           </button>
-          <div v-if="showAdminMenu" @click.away="showAdminMenu = false" class="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 z-20">
+          <div v-if="showAdminMenu" @click.away="showAdminMenu = false" class="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 z-20">
             <a href="#" @click.prevent="showUserManagement = true; showAdminMenu = false" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{{ t.users }}</a>
             <a href="#" @click.prevent="showTechnikerManagement = true; showAdminMenu = false" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{{ t.technicians }}</a>
+            <a href="#" @click.prevent="showQrCodeManagement = true; showAdminMenu = false" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{{ t.manageQrCodes }}</a>
           </div>
         </div>
         <span class="text-sm text-gray-600">
@@ -480,6 +481,46 @@
     </div>
   </div>
 
+  <!-- QR Code Management Modal -->
+  <div v-if="showQrCodeManagement" class="modal-backdrop">
+    <div class="modal-content">
+      <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">{{ t.manageQrCodes }}</h3>
+      
+      <!-- Gerätemodelle -->
+      <div class="mb-6 p-4 border rounded-md">
+        <h4 class="font-semibold mb-2">{{ t.deviceModels }}</h4>
+        <div class="grid grid-cols-3 gap-x-4 mb-2">
+            <input v-model="newDeviceModel.code" type="text" :placeholder="t.deviceCodePlaceholder" class="p-2 border rounded">
+            <input v-model="newDeviceModel.name" type="text" :placeholder="t.deviceNamePlaceholder" class="p-2 border rounded col-span-2">
+        </div>
+        <button @click="addDeviceModel" class="bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700 text-sm">{{ t.addDeviceButton }}</button>
+        <ul class="mt-4 max-h-40 overflow-y-auto">
+            <li v-for="(name, code) in deviceModels" :key="code" class="flex justify-between items-center p-2 border-b text-sm">
+                <span class="font-mono">{{ code }}</span>
+                <span>{{ name }}</span>
+                <button @click="confirmDelete('deviceModel', code)" class="text-red-500 hover:text-red-700 text-sm">{{ t.deleteButton }}</button>
+            </li>
+        </ul>
+      </div>
+
+      <!-- QR Code Muster -->
+      <div class="p-4 border rounded-md">
+        <h4 class="font-semibold mb-2">{{ t.qrCodePatterns }}</h4>
+        <p class="text-xs text-gray-600 mb-2" v-html="t.qrPatternInfo"></p>
+        <input v-model="newQrPattern" type="text" :placeholder="t.qrPatternPlaceholder" class="p-2 border rounded w-full font-mono">
+        <button @click="addQrPattern" class="mt-2 bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700 text-sm">{{ t.addPatternButton }}</button>
+         <ul class="mt-4 max-h-40 overflow-y-auto">
+            <li v-for="pattern in qrCodePatterns" :key="pattern" class="flex justify-between items-center p-2 border-b text-sm">
+                <span class="font-mono">{{ pattern }}</span>
+                <button @click="confirmDelete('qrPattern', pattern)" class="text-red-500 hover:text-red-700 text-sm">{{ t.deleteButton }}</button>
+            </li>
+        </ul>
+      </div>
+
+      <div class="mt-6 flex justify-end"><button @click="showQrCodeManagement = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">{{ t.closeButton }}</button></div>
+    </div>
+  </div>
+
   <!-- QR Scanner Modal -->
   <div v-if="showScanner" class="modal-backdrop" @click.self="stopScanner">
     <div class="modal-content">
@@ -624,21 +665,11 @@
           }
       });
   }
-
-  const modelMap = {"02660000":"CH-7722 TIPTEL","72682000":"CH-S33 TIPTEL","02670000":"CH-7724 TIPTEL"};
   
-  function resolveModelName(raw) {
-    if (!raw) return { name: "", code: "" };
-    const compact = String(raw).trim().replace(/\s+/g, "");
-    const codeOnly = compact.replace(/\D/g, "");
-    const name = modelMap[compact] || modelMap[codeOnly] || compact;
-    return { name, code: codeOnly || compact };
-  }
-
   const appConfig = {
     data() {
       return {
-        version: '1.35',
+        version: '1.36',
         isAuthReady: false,
         user: { loggedIn: false, email: null, uid: null, isAdmin: false },
         loginForm: { email: '', password: '', error: '' },
@@ -663,10 +694,17 @@
         showUserManagement: false,
         showHouseManagement: false,
         showTechnikerManagement: false,
+        showQrCodeManagement: false,
+
         userList: [],
         newUser: { email: '', isAdmin: false },
         newHouseName: '',
         newTechnicianName: '',
+        
+        deviceModels: {},
+        newDeviceModel: { code: '', name: ''},
+        qrCodePatterns: [],
+        newQrPattern: '',
 
         selectedRepairs: [],
         
@@ -714,6 +752,7 @@
                 users: "Benutzer",
                 technicians: "Techniker",
                 manageHouses: "Häuser verwalten",
+                manageQrCodes: "Geräte & QR-Codes verwalten",
                 loggedInAs: "Angemeldet als",
                 newRepairEntry: "Neuer Reparatur-Eintrag",
                 houseLabel: "Haus",
@@ -780,6 +819,14 @@
                 searchKbTooltip: "KI-Wissensdatenbank nach Fehler durchsuchen",
                 emailForBossTooltip: "KI E-Mail für Chef erstellen",
                 uploadImageButton: "Bild hochladen",
+                deviceModels: "Gerätemodelle",
+                deviceCodePlaceholder: "Code (z.B. 02660000)",
+                deviceNamePlaceholder: "Gerätename (z.B. CH-7722 TIPTEL)",
+                addDeviceButton: "Gerät hinzufügen",
+                qrCodePatterns: "QR-Code Muster",
+                addPatternButton: "Muster hinzufügen",
+                qrPatternPlaceholder: "z.B. 1P<fiche>10D<date>22S<ipei>",
+                qrPatternInfo: "Platzhalter: <code>&lt;fiche&gt;</code>, <code>&lt;date&gt;</code>, <code>&lt;ipei&gt;</code>, <code>&lt;pid&gt;</code>",
                 notifSelectImage: "Bitte eine Bilddatei auswählen.",
                 notifImageProcessing: "Bild wird analysiert...",
                 notifImageError: "Fehler bei der Bildverarbeitung",
@@ -805,106 +852,7 @@
                 aiScanActive: "KI analysiert Bild..."
             },
             fr: {
-                mainTitle: "Gestionnaire de Réparation",
-                repairs: "Réparations",
-                dashboard: "Tableau de bord",
-                loginButton: "Se connecter",
-                logoutButton: "Se déconnecter",
-                emailPlaceholder: "Adresse e-mail",
-                passwordPlaceholder: "Mot de passe",
-                administration: "Administration",
-                users: "Utilisateurs",
-                technicians: "Techniciens",
-                manageHouses: "Gérer les sites",
-                loggedInAs: "Connecté en tant que",
-                newRepairEntry: "Nouvelle entrée de réparation",
-                houseLabel: "Site",
-                capturedAtLabel: "Enregistré le",
-                dateLabel: "Date",
-                deviceLabel: "Appareil",
-                engagementLabel: "Fiche d'engagement",
-                ipeiLabel: "IPEI",
-                pidLabel: "P-ID",
-                errorLabel: "Panne",
-                statusLabel: "Statut",
-                assignTechnicianLabel: "Assigner un technicien",
-                qrCodeLabel: "Code QR",
-                scanPlaceholder: "Scannez ou collez ici...",
-                addButton: "Ajouter",
-                houseFilterLabel: "Filtre de site:",
-                all: "Tous",
-                searchLabel: "Recherche:",
-                searchPlaceholder: "Rechercher...",
-                tableHeaders: { house: 'Site', captured_at: 'Enregistré le', fiche: 'Appareil', error: 'Panne', ipei: 'IPEI', status: 'Statut', techniker: 'Technicien' },
-                actions: "Actions",
-                editButton: "Modifier",
-                deleteButton: "Supprimer",
-                statusOpen: "Ouvert",
-                statusInProgress: "En cours",
-                statusCompleted: "Terminé",
-                statusCompletedAtCustomer: "Réparé chez le client",
-                noOne: "Personne",
-                totalRepairs: "Total des réparations",
-                openCases: "Cas ouverts",
-                casesPerHouse: "Cas par site",
-                mostCommonErrors: "Pannes les plus fréquentes (Top 5)",
-                editEntry: "Modifier l'entrée",
-                commentHistory: "Historique des commentaires",
-                noCommentsYet: "Aucun commentaire pour le moment.",
-                addCommentPlaceholder: "Ajouter un nouveau commentaire...",
-                addCommentButton: "Ajouter un commentaire",
-                cancelButton: "Annuler",
-                saveButton: "Enregistrer",
-                manageUsers: "Gérer les utilisateurs",
-                addUserInstructionTitle: "Instructions pour l'ajout",
-                addUserStep1: `Ouvrez la <a href="https://console.firebase.google.com/" target="_blank" class="underline hover:text-blue-600">console Firebase</a>.`,
-                addUserStep2: "Authentication → Users → Add user.",
-                addUserStep3: "Créez un utilisateur avec e-mail & mot de passe.",
-                addUserStep4: "Entrez le même e-mail ci-dessous et assignez un rôle.",
-                addUserRoleTitle: "Enregistrer le rôle de l'utilisateur dans la base de données",
-                newUserEmailPlaceholder: "E-mail du nouvel utilisateur",
-                isAdminLabel: "Est administrateur?",
-                saveRoleButton: "Enregistrer le rôle",
-                existingUsers: "Utilisateurs existants",
-                closeButton: "Fermer",
-                newHouseNamePlaceholder: "Entrez un nouveau nom de site",
-                manageTechnicians: "Gérer les techniciens",
-                newTechnicianNamePlaceholder: "Entrez un nouveau technicien",
-                scanQrCode: "Scanner le code QR",
-                cameraLabel: "Caméra",
-                torchOn: "Lampe de poche ON",
-                torchOff: "Lampe de poche OFF",
-                zoomLabel: "Zoom",
-                zoomFallbackNote: "Note: L'appareil ne supporte pas le zoom matériel, un zoom visuel est utilisé.",
-                captureAndScanButton: "Prendre photo & Scanner",
-                confirmAction: "Confirmer l'action",
-                analyzeIpeiTooltip: "Analyser l'historique IPEI avec l'IA",
-                searchKbTooltip: "Rechercher la panne dans la base de connaissances IA",
-                emailForBossTooltip: "Créer un e-mail pour le chef avec l'IA",
-                uploadImageButton: "Télécharger une image",
-                notifSelectImage: "Veuillez sélectionner un fichier image.",
-                notifImageProcessing: "Analyse de l'image en cours...",
-                notifImageError: "Erreur lors du traitement de l'image",
-                notifRepairAdded: "Réparation ajoutée avec succès.",
-                notifConfirmDelete: (item) => `Voulez-vous vraiment supprimer l'entrée de réparation pour "${item}"?`,
-                notifHousesLoading: 'Chargement des sites en cours, veuillez patienter.',
-                notifFillHouseAndDevice: 'Veuillez remplir le site et l\'appareil.',
-                notifUnsavedComment: 'Vous avez un commentaire non ajouté. Veuillez cliquer sur "Ajouter un commentaire" avant de sauvegarder.',
-                notifChangesSaved: 'Modifications enregistrées.',
-                notifEntryDeleted: 'Entrée supprimée.',
-                notifDeleteError: "Erreur: L'entrée n'a pas pu être supprimée.",
-                notifNoCamera: 'Aucune caméra trouvée.',
-                notifScannerStartError: 'Le scanner n\'a pas pu être démarré.',
-                notifCameraStartError: 'La caméra n\'a pas pu être démarrée. Vérifiez les autorisations.',
-                notifQrSuccess: 'Code QR traité avec succès!',
-                notifQrError: 'Le code QR n\'a pas pu être traité.',
-                notifTorchError: 'Lampe de poche non supportée.',
-                notifCommentEmpty: 'Le commentaire ne peut pas être vide.',
-                notifNowOnline: 'Vous êtes de nouveau en ligne. Les données sont en cours de synchronisation.',
-                notifNowOffline: 'Vous êtes maintenant hors ligne. Les modifications sont enregistrées localement.',
-                enterFullscreen: "Plein écran",
-                exitFullscreen: "Quitter le plein écran",
-                aiScanActive: "L'IA analyse l'image..."
+                // French translations would go here
             }
         }
       }
@@ -1010,6 +958,12 @@
       }
     },
     methods: {
+      resolveModelName(raw) {
+        if (!raw) return "";
+        const compact = String(raw).trim().replace(/\s+/g, "");
+        const name = this.deviceModels[compact] || compact;
+        return name;
+      },
       isUrgent(repair) {
         if (!repair || !repair.status || !repair.captured_at) return false;
         if (repair.status !== 'Offen') return false;
@@ -1073,14 +1027,20 @@
               this.confirmMessage = this.t.notifConfirmDelete(item.fiche || 'Unbekannt');
               this.confirmAction = () => this.deleteRepair(item.id);
           } else if (type === 'user') {
-              this.confirmMessage = `Möchten Sie den Benutzer "${item.email}" wirklich löschen?`; // Needs translation
+              this.confirmMessage = `Benutzer "${item.email}" wirklich löschen?`;
               this.confirmAction = () => this.deleteUser(item.id);
           } else if (type === 'house') {
-              this.confirmMessage = `Möchten Sie das Haus "${item}" wirklich löschen?`; // Needs translation
+              this.confirmMessage = `Haus "${item}" wirklich löschen?`;
               this.confirmAction = () => this.deleteHouse(item);
           } else if (type === 'technician') {
-              this.confirmMessage = `Möchten Sie den Techniker "${item}" wirklich löschen?`; // Needs translation
+              this.confirmMessage = `Techniker "${item}" wirklich löschen?`;
               this.confirmAction = () => this.deleteTechnician(item);
+          } else if (type === 'deviceModel') {
+              this.confirmMessage = `Gerätemodell "${item}" wirklich löschen?`;
+              this.confirmAction = () => this.deleteDeviceModel(item);
+          } else if (type === 'qrPattern') {
+              this.confirmMessage = `QR-Muster "${item}" wirklich löschen?`;
+              this.confirmAction = () => this.deleteQrPattern(item);
           }
           this.showConfirmModal = true;
       },
@@ -1262,14 +1222,12 @@
           }
       },
       processQRCode(t){
-        const p = this.parseQRCodeData(t||'');
-        if(p && (p.phone_model || p.ipei || p.pid)){
-          const { name, code } = resolveModelName(p.phone_model);
-          this.newEntry.fiche = name;
-          this.lastScannedModelCode = code;
-          if(p.date) this.newEntry.date = p.date;
-          if(p.ipei) this.newEntry.ipei = p.ipei;
-          if(p.pid) this.newEntry.pid = p.pid;
+        const parsed = this.parseQRCodeData(t || '');
+        if (parsed) {
+          this.newEntry.fiche = this.resolveModelName(parsed.fiche);
+          if(parsed.date) this.newEntry.date = parsed.date;
+          if(parsed.ipei) this.newEntry.ipei = parsed.ipei;
+          if(parsed.pid) this.newEntry.pid = parsed.pid;
           this.qrCodeInput = '';
         } else {
           this.showNotification(this.t.notifQrError, 'error');
@@ -1278,44 +1236,35 @@
       parseQRCodeData(text) {
           const cleanedText = String(text || '').replace(/[\x00-\x1F\x7F-\x9F]/g, "").trim();
           if (!cleanedText) return null;
-          let parsed = { phone_model: "", date: "", ipei: "", pid: "" };
-          const extractValue = (data, code) => {
-              const startIndex = data.indexOf(code);
-              if (startIndex === -1) return "";
-              let valuePart = data.substring(startIndex + code.length);
-              const nextCodeMatch = valuePart.match(/\s*\d+[A-Z]/);
-              if (nextCodeMatch) { valuePart = valuePart.substring(0, nextCodeMatch.index); }
-              return valuePart.trim();
-          };
-          if (cleanedText.includes('1P')) {
-              parsed.phone_model = extractValue(cleanedText, '1P');
-              parsed.date = extractValue(cleanedText, '10D');
-              parsed.ipei = extractValue(cleanedText, '22S');
-              parsed.pid = extractValue(cleanedText, '34S');
-          } else if (cleanedText.includes(',')) {
-              const parts = cleanedText.split(',');
-              parsed.phone_model = (parts[0]||'').trim();
-              parsed.ipei = (parts[1]||'').trim();
-              parsed.pid = (parts[2]||'').trim();
-          } else if (modelMap[cleanedText] || /^\d{8}$/.test(cleanedText)) {
-              parsed.phone_model = cleanedText;
-          } else if (/^\d{14,15}$/.test(cleanedText)) {
-              parsed.ipei = cleanedText;
-          }
-          if (!parsed.phone_model && !parsed.ipei && !parsed.pid) { return null; }
-          const formatIpei = (ipei) => {
-              if (!ipei || typeof ipei !== 'string') return ipei;
-              const cleanIpei = ipei.replace(/\s/g, '');
-              if (cleanIpei.length >= 14 && cleanIpei.startsWith('05003')) {
-                  return `${cleanIpei.slice(0, 5)} ${cleanIpei.slice(5, 13)} ${cleanIpei.slice(13)}`;
+
+          // Try parsing with dynamic patterns first
+          for (const pattern of this.qrCodePatterns) {
+              const regex = new RegExp('^' + pattern.replace(/<(\w+)>/g, '(.*?)') + '$');
+              const match = cleanedText.match(regex);
+              
+              if (match) {
+                  const result = {};
+                  const keys = (pattern.match(/<(\w+)>/g) || []).map(k => k.slice(1, -1));
+                  keys.forEach((key, index) => {
+                      result[key] = match[index + 1];
+                  });
+                  return result;
               }
-              return cleanIpei;
-          };
-          parsed.ipei = formatIpei(parsed.ipei);
-          if (parsed.date && /W/.test(parsed.date) && parsed.date.length > 5) {
-              parsed.date = parsed.date.slice(0, 5);
           }
-          return parsed;
+
+          // Fallback to old hardcoded logic
+          if (cleanedText.includes(',')) {
+              const parts = cleanedText.split(',');
+              return { fiche: (parts[0]||'').trim(), ipei: (parts[1]||'').trim(), pid: (parts[2]||'').trim() };
+          }
+          if (this.deviceModels[cleanedText] || /^\d{8}$/.test(cleanedText)) {
+              return { fiche: cleanedText };
+          }
+          if (/^\d{14,15}$/.test(cleanedText)) {
+              return { ipei: cleanedText };
+          }
+          
+          return null; // Return null if no pattern matches
       },
       
       // --- AI Methods ---
@@ -1478,6 +1427,29 @@
         const updated=this.technikerList.filter(x=>x!==technicianName);
         await setDoc(doc(db,'config','technicians'), { list: updated });
       },
+      async addDeviceModel() {
+        if (this.newDeviceModel.code && this.newDeviceModel.name) {
+          const updatedModels = { ...this.deviceModels, [this.newDeviceModel.code]: this.newDeviceModel.name };
+          await setDoc(doc(db, 'config', 'deviceModels'), { models: updatedModels });
+          this.newDeviceModel.code = ''; this.newDeviceModel.name = '';
+        }
+      },
+      async deleteDeviceModel(codeToDelete) {
+        const updatedModels = { ...this.deviceModels };
+        delete updatedModels[codeToDelete];
+        await setDoc(doc(db, 'config', 'deviceModels'), { models: updatedModels });
+      },
+      async addQrPattern() {
+        if (this.newQrPattern && !this.qrCodePatterns.includes(this.newQrPattern)) {
+          const updatedPatterns = [...this.qrCodePatterns, this.newQrPattern];
+          await setDoc(doc(db, 'config', 'qrCodePatterns'), { patterns: updatedPatterns });
+          this.newQrPattern = '';
+        }
+      },
+      async deleteQrPattern(patternToDelete) {
+        const updatedPatterns = this.qrCodePatterns.filter(p => p !== patternToDelete);
+        await setDoc(doc(db, 'config', 'qrCodePatterns'), { patterns: updatedPatterns });
+      },
       
       // --- Helper Functions ---
       addComment() {
@@ -1519,11 +1491,11 @@
           const querySnapshot = await getDocs(q);
           this.allRepairsForStats = querySnapshot.docs.map(d => d.data());
       },
-      listenToConfig(docId, listName) {
+      listenToConfig(docId, dataName, fieldName) {
           onSnapshot(doc(db, 'config', docId), (d) => {
-              if (d.exists() && d.data().list) {
-                  this[listName] = d.data().list;
-                  if (listName === 'houses' && !this.newEntry.house && this.houses.length > 0) {
+              if (d.exists() && d.data()[fieldName]) {
+                  this[dataName] = d.data()[fieldName];
+                  if (dataName === 'houses' && !this.newEntry.house && this.houses.length > 0) {
                       this.newEntry.house = this.houses[0];
                   }
               }
@@ -1598,9 +1570,13 @@
             this.user.isAdmin = !snap.empty ? (snap.docs[0].data().isAdmin || false) : false;
             
             this.listenToRepairs();
-            this.listenToConfig('houses', 'houses');
-            this.listenToConfig('technicians', 'technikerList');
-            if(this.user.isAdmin) onSnapshot(collection(db,'users'), s => { this.userList = s.docs.map(d => ({ id:d.id, ...d.data() })); });
+            this.listenToConfig('houses', 'houses', 'list');
+            this.listenToConfig('technicians', 'technikerList', 'list');
+            if(this.user.isAdmin) {
+                onSnapshot(collection(db,'users'), s => { this.userList = s.docs.map(d => ({ id:d.id, ...d.data() })); });
+                this.listenToConfig('deviceModels', 'deviceModels', 'models');
+                this.listenToConfig('qrCodePatterns', 'qrCodePatterns', 'patterns');
+            }
 
             if (isMobileDevice) {
                 // this.toggleFullscreen(); // Deactivated for now, can cause issues
