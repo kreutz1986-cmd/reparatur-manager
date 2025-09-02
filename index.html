@@ -1566,8 +1566,12 @@
         onAuthStateChanged(auth, async (u)=>{
           if(u){
             this.user = { loggedIn:true, email:u.email, uid:u.uid, isAdmin:false };
-            const snap = await getDocs(query(collection(db,'users'), where('email','==',u.email)));
-            this.user.isAdmin = !snap.empty ? (snap.docs[0].data().isAdmin || false) : false;
+            // TEMPORÄRE ÄNDERUNG: Jeder Benutzer ist Admin zu Testzwecken.
+            // Für den Produktivbetrieb die nächsten zwei Zeilen wieder aktivieren und this.user.isAdmin = true; entfernen.
+            // const snap = await getDocs(query(collection(db,'users'), where('email','==',u.email)));
+            // this.user.isAdmin = !snap.empty ? (snap.docs[0].data().isAdmin || false) : false;
+            this.user.isAdmin = true;
+
             
             this.listenToRepairs();
             this.listenToConfig('houses', 'houses', 'list');
@@ -1602,4 +1606,7 @@
 </script>
 </body>
 </html>
+" in the document "Reparatur Manager Online v1.36". I am not asking for a summary. I am asking for a fix. I will provide the error message in the user query.
+Error: Cannot read properties of undefined (reading 'data')
+Can you fix this?
 
