@@ -1233,18 +1233,17 @@
         const cleanedText = String(text || '').replace(/[\x00-\x1F\x7F-\x9F]/g, "").trim();
         if (!cleanedText) return null;
         
+        let parsedResult = null;
+
         // 1. Versuche, das passende Muster aus der Admin-Konfiguration zu finden
         if (this.qrCodePatterns && this.qrCodePatterns.length > 0) {
             for (const pattern of this.qrCodePatterns) {
-                if (!pattern.example) continue; // Sicherheitscheck
-                // Erstelle eine dynamische Regex aus dem Muster-Beispiel
+                if (!pattern.example) continue;
                 let regexString = '^' + pattern.example.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                 const placeholderRegex = /\{\{([^}]+)\}\}/g;
-                
                 const placeholders = [...pattern.example.matchAll(placeholderRegex)].map(m => m[1]);
                 if (placeholders.length === 0) continue;
 
-                // Ersetze Platzhalter im Regex-String, um die Daten zu erfassen
                 placeholders.forEach(ph => {
                     regexString = regexString.replace(`{{${ph}}}`, '(.+)');
                 });
@@ -1260,32 +1259,51 @@
                             result[key] = match[index + 1];
                         }
                     });
-                    return result; // Erfolgreich mit einem Muster geparst
+                    parsedResult = result;
+                    break; 
                 }
             }
         }
 
         // 2. FALLBACK: Wenn kein Muster passt, versuche generische GS1-Analyse
-        const dataString = cleanedText.replace(/^\[\)\>\s*\d{2}\s*/, '').replace(/\s+/g, '');
-        const identifiers = {
-            '1P': 'fiche', '10D': 'date', '22S': 'ipei', '34S': 'pid'
-        };
-        const allIds = Object.keys(identifiers).join('|');
-        const regex = new RegExp(`(${allIds})`, 'g');
-        const matches = [...dataString.matchAll(regex)];
-        
-        if (matches.length > 0) {
-            let result = {};
-            matches.forEach((match, i) => {
-                const identifier = match[1];
-                const field = identifiers[identifier];
-                const startIndex = match.index + identifier.length;
-                const nextMatch = matches[i + 1];
-                const endIndex = nextMatch ? nextMatch.index : dataString.length;
-                const dataValue = dataString.substring(startIndex, endIndex);
-                result[field] = dataValue;
-            });
-            return result; // Erfolgreich mit GS1-Fallback geparst
+        if (!parsedResult) {
+            const dataString = cleanedText.replace(/^\[\)\>\s*\d{2}\s*/, '').replace(/\s+/g, '');
+            const identifiers = {
+                '1P': 'fiche', '10D': 'date', '22S': 'ipei', '34S': 'pid'
+            };
+            const allIds = Object.keys(identifiers).join('|');
+            const regex = new RegExp(`(${allIds})`, 'g');
+            const matches = [...dataString.matchAll(regex)];
+            
+            if (matches.length > 0) {
+                let result = {};
+                matches.forEach((match, i) => {
+                    const identifier = match[1];
+                    const field = identifiers[identifier];
+                    const startIndex = match.index + identifier.length;
+                    const nextMatch = matches[i + 1];
+                    const endIndex = nextMatch ? nextMatch.index : dataString.length;
+                    let dataValue = dataString.substring(startIndex, endIndex);
+
+                    // Korrektur für das Datum, um nur YYWww zu nehmen
+                    if (field === 'date' && dataValue.length > 5) {
+                        if (/^\d{2}W\d{2}/.test(dataValue)) {
+                           dataValue = dataValue.substring(0, 5);
+                        }
+                    }
+
+                    result[field] = dataValue;
+                });
+                parsedResult = result;
+            }
+        }
+
+        // 3. Nachbearbeitung: Gerätenamen ersetzen
+        if (parsedResult) {
+            if (parsedResult.fiche === '02660000') {
+                parsedResult.fiche = 'CH-7722 Tiptel';
+            }
+            return parsedResult;
         }
 
         return null; // Nichts hat funktioniert
