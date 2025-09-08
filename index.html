@@ -4,13 +4,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Reparatur Manager Online v1.60</title>
+  <title>Reparatur Manager Online v1.69</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-  <!-- PDF Export Bibliotheken -->
+  <!-- PDF & Chart Bibliotheken -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
       body { font-family: 'Inter', sans-serif; }
       [v-cloak] { display: none; }
@@ -59,7 +60,7 @@
     </div>
     <p class="loading-text">SYSTEM WIRD GESTARTET...</p>
   </div>
-
+  
   <!-- Login -->
   <div v-if="isAuthReady && !user.loggedIn" class="min-h-screen flex items-center justify-center bg-gray-50 py-8 px-4">
     <div class="max-w-md w-full space-y-8">
@@ -74,7 +75,6 @@
       </form>
     </div>
   </div>
-
 
   <!-- Main App -->
   <div v-if="isAuthReady && user.loggedIn" class="p-4 md:p-8">
@@ -114,6 +114,7 @@
             <a href="#" @click.prevent="showUserManagement = true; showAdminMenu = false" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{{ t.users }}</a>
             <a href="#" @click.prevent="showTechnikerManagement = true; showAdminMenu = false" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{{ t.technicians }}</a>
             <a href="#" @click.prevent="showFehlerManagement = true; showAdminMenu = false" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{{ t.manageErrors }}</a>
+             <a href="#" @click.prevent="showKnowledgeBaseManagement = true; showAdminMenu = false" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{{ t.manageKnowledgeBase }}</a>
             <a href="#" @click.prevent="showQrCodeManagement = true; showAdminMenu = false" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{{ t.manageQrCodes }}</a>
           </div>
         </div>
@@ -157,11 +158,11 @@
             <label class="block text-sm font-medium text-gray-700">{{ t.ipeiLabel }}</label>
              <div class="relative mt-1">
                 <input v-model.trim="newEntry.ipei" type="text" class="block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm pr-20">
-                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                <div class="absolute inset-y-0 right-0 flex items-center pr-3">
                     <div v-if="isCheckingIpei" class="spinner h-5 w-5 border-2"></div>
-                    <span v-else-if="ipeiHistoryCount > 0" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800" :title="t.ipeiHistoryTooltip(ipeiHistoryCount)">
+                    <a href="#" v-else-if="ipeiHistoryCount > 0" @click.prevent="showIpeiHistory(newEntry.ipei)" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 hover:bg-red-200" :title="t.ipeiHistoryTooltip(ipeiHistoryCount)">
                         {{ ipeiHistoryCount }}x {{ t.ipeiHistoryFound }}
-                    </span>
+                    </a>
                 </div>
             </div>
           </div>
@@ -169,12 +170,19 @@
             <label class="block text-sm font-medium text-gray-700">{{ t.pidLabel }}</label>
             <input v-model="newEntry.pid" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
           </div>
-          <div>
+          <div class="relative">
             <label class="block text-sm font-medium text-gray-700">{{ t.errorLabel }}</label>
-            <input v-model="newEntry.error" list="common-errors" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            <input v-model="newEntry.error" list="common-errors" @focus="showErrorSuggestions = true" @blur="hideErrorSuggestions" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
             <datalist id="common-errors">
                 <option v-for="error in commonErrors" :key="error" :value="error"></option>
             </datalist>
+             <div v-if="errorSuggestions.length > 0 && showErrorSuggestions" class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+                <ul class="max-h-40 overflow-auto">
+                    <li v-for="solution in errorSuggestions" :key="solution.id" @click="showSolution(solution)" class="px-3 py-2 cursor-pointer hover:bg-gray-100 text-sm">
+                        {{ solution.title }}
+                    </li>
+                </ul>
+            </div>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700">{{ t.statusLabel }}</label>
@@ -299,7 +307,7 @@
     
     <!-- Dashboard View -->
     <div v-if="currentView === 'dashboard'">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
             <!-- Stat Cards -->
             <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
                 <div>
@@ -323,33 +331,18 @@
                 <div class="bg-green-100 p-3 rounded-full"><svg class="h-6 w-6 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
             </div>
         </div>
-        
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-            <!-- Reparaturen pro Haus -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div class="bg-white p-6 rounded-lg shadow-md">
-                <h3 class="text-lg font-semibold mb-4">{{ t.casesPerHouse }}</h3>
-                <div class="space-y-3">
-                    <div v-for="(count, house) in repairsByHouse" :key="house">
-                        <div class="flex justify-between items-center mb-1">
-                            <span class="text-sm font-medium">{{ house }}</span>
-                            <span class="text-sm font-bold">{{ count }}</span>
-                        </div>
-                        <div class="w-full bg-gray-200 rounded-full h-2.5">
-                            <div class="bg-indigo-600 h-2.5 rounded-full" :style="{ width: (count / maxRepairsInStats * 100) + '%' }"></div>
-                        </div>
-                    </div>
-                </div>
+                <h3 class="text-lg font-semibold mb-4">{{ t.statusDistribution }}</h3>
+                <canvas id="statusChart"></canvas>
             </div>
-
-            <!-- Top 5 Fehler -->
-            <div class="bg-white p-6 rounded-lg shadow-md">
+             <div class="bg-white p-6 rounded-lg shadow-md">
                 <h3 class="text-lg font-semibold mb-4">{{ t.mostCommonErrors }}</h3>
-                <ul class="space-y-2">
-                    <li v-for="error in mostCommonErrors" :key="error.name" class="flex justify-between items-center text-sm">
-                        <span class="text-gray-700 truncate pr-4">{{ error.name }}</span>
-                        <span class="font-semibold bg-gray-100 px-2 py-1 rounded-md">{{ error.count }}x</span>
-                    </li>
-                </ul>
+                <canvas id="errorsChart"></canvas>
+            </div>
+             <div class="bg-white p-6 rounded-lg shadow-md lg:col-span-2">
+                <h3 class="text-lg font-semibold mb-4">{{ t.casesPerHouse }}</h3>
+                <canvas id="housesChart"></canvas>
             </div>
         </div>
     </div>
@@ -370,19 +363,30 @@
             <label class="block text-sm font-medium text-gray-700">{{ t.ipeiLabel }}</label>
             <div class="relative mt-1">
                 <input v-model.trim="currentEdit.ipei" type="text" class="block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm pr-20">
-                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                <div class="absolute inset-y-0 right-0 flex items-center pr-3">
                     <div v-if="isCheckingIpei" class="spinner h-5 w-5 border-2"></div>
-                    <span v-else-if="ipeiHistoryCount > 0" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800" :title="t.ipeiHistoryTooltip(ipeiHistoryCount)">
+                     <a href="#" v-else-if="ipeiHistoryCount > 0" @click.prevent="showIpeiHistory(currentEdit.ipei, true)" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 hover:bg-red-200" :title="t.ipeiHistoryTooltip(ipeiHistoryCount)">
                         {{ ipeiHistoryCount }}x {{ t.ipeiHistoryFound }}
-                    </span>
+                    </a>
                 </div>
             </div>
         </div>
         <div><label class="block text-sm font-medium text-gray-700">{{ t.pidLabel }}</label><input v-model="currentEdit.pid" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></div>
-        <div><label class="block text-sm font-medium text-gray-700">{{ t.errorLabel }}</label><input v-model="currentEdit.error" type="text" list="common-errors" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></div>
+        <div class="relative">
+            <label class="block text-sm font-medium text-gray-700">{{ t.errorLabel }}</label>
+            <input v-model="currentEdit.error" type="text" list="common-errors" @focus="showErrorSuggestions = true" @blur="hideErrorSuggestions" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+             <div v-if="errorSuggestions.length > 0 && showErrorSuggestions" class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+                <ul class="max-h-40 overflow-auto">
+                    <li v-for="solution in errorSuggestions" :key="solution.id" @click="showSolution(solution)" class="px-3 py-2 cursor-pointer hover:bg-gray-100 text-sm">
+                        {{ solution.title }}
+                    </li>
+                </ul>
+            </div>
+        </div>
         <div><label class="block text-sm font-medium text-gray-700">{{ t.statusLabel }}</label><select v-model="currentEdit.status" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"><option>{{ t.statusOpen }}</option><option>{{ t.statusInProgress }}</option><option>{{ t.statusCompleted }}</option><option>{{ t.statusCompletedAtCustomer }}</option></select></div>
         <div><label class="block text-sm font-medium text-gray-700">{{ t.assignTechnicianLabel }}</label><select v-model="currentEdit.techniker" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"><option value="">{{ t.noOne }}</option><option v-for="techniker in technikerList" :key="techniker" :value="techniker">{{ techniker }}</option></select></div>
       </div>
+      
       <hr class="my-6">
       <div class="mt-4">
         <h4 class="text-md font-semibold text-gray-800 mb-2">{{ t.commentHistory }}</h4>
@@ -551,6 +555,89 @@
     </div>
   </div>
 
+  <!-- KNOWLEDGE BASE MODALS (ADD/EDIT & VIEW) -->
+  <div v-if="showKnowledgeBaseManagement" class="modal-backdrop">
+    <div class="modal-content">
+        <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">{{ t.manageKnowledgeBase }}</h3>
+        <!-- Form to Add/Edit Solution -->
+        <div class="p-4 border rounded-md mb-6">
+            <h4 class="font-semibold mb-2">{{ newSolution.id ? t.editSolution : t.newSolution }}</h4>
+            <div class="space-y-4">
+                <input v-model="newSolution.title" type="text" :placeholder="t.solutionTitle" class="p-2 border rounded w-full">
+                <textarea v-model="newSolution.content" rows="4" :placeholder="t.solutionContent" class="p-2 border rounded w-full"></textarea>
+                <input v-model="newSolution.relatedErrors" type="text" :placeholder="t.relatedErrorsPlaceholder" class="p-2 border rounded w-full">
+            </div>
+            <div class="mt-4">
+                <button @click="saveSolution" class="bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700 text-sm">{{ t.saveSolution }}</button>
+            </div>
+        </div>
+
+        <!-- List of Existing Solutions -->
+        <div>
+            <h4 class="font-semibold mb-2">{{ t.knowledgeBase }}</h4>
+            <ul class="max-h-60 overflow-y-auto border rounded-md divide-y">
+                <li v-for="solution in knowledgeBase" :key="solution.id" class="p-3 flex justify-between items-center">
+                    <span class="font-semibold">{{ solution.title }}</span>
+                    <div class="space-x-2">
+                        <button @click="editSolution(solution)" class="text-indigo-600 hover:text-indigo-800 text-sm">{{ t.editButton }}</button>
+                        <button @click="confirmDelete('knowledgeBase', solution)" class="text-red-500 hover:text-red-700 text-sm">{{ t.deleteButton }}</button>
+                    </div>
+                </li>
+                 <li v-if="knowledgeBase.length === 0" class="p-3 text-sm text-gray-500">{{ t.noSolutionsFound }}</li>
+            </ul>
+        </div>
+        <div class="mt-6 flex justify-end">
+            <button @click="showKnowledgeBaseManagement = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">{{ t.closeButton }}</button>
+        </div>
+    </div>
+  </div>
+
+  <div v-if="showSolutionModal" class="modal-backdrop">
+    <div class="modal-content">
+        <h3 class="text-lg leading-6 font-medium text-gray-900 mb-2">{{ currentSolution.title }}</h3>
+        <p class="text-sm text-gray-500 mb-4">{{ t.relatedErrors }}: {{ currentSolution.relatedErrors }}</p>
+        <div class="p-3 bg-gray-50 rounded-md max-h-80 overflow-y-auto border">
+            <pre class="whitespace-pre-wrap text-sm text-gray-800">{{ currentSolution.content }}</pre>
+        </div>
+        <div class="mt-6 flex justify-end">
+            <button @click="showSolutionModal = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">{{ t.closeButton }}</button>
+        </div>
+    </div>
+  </div>
+
+   <!-- User Management Modal -->
+  <div v-if="showUserManagement" class="modal-backdrop">
+    <div class="modal-content">
+      <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">{{ t.manageUsers }}</h3>
+      
+       <div class="mb-6 p-4 border rounded-md">
+        <h4 class="font-semibold mb-2">{{ newUser.id ? 'Benutzer bearbeiten' : 'Neuen Benutzer hinzufügen' }}</h4>
+        <form @submit.prevent="saveUserRole">
+          <input v-model="newUser.email" type="email" placeholder="E-Mail des Benutzers" required class="block w-full mb-2 p-2 border rounded">
+          <input v-model="newUser.technicianName" type="text" placeholder="Technikername (optional, muss exakt übereinstimmen)" class="block w-full mb-2 p-2 border rounded">
+          <div class="flex items-center mb-2"><input v-model="newUser.isAdmin" type="checkbox" id="isAdmin" class="h-4 w-4 text-indigo-600 border-gray-300 rounded"><label for="isAdmin" class="ml-2 block text-sm text-gray-900">Ist Administrator?</label></div>
+          <button type="submit" class="bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700">Speichern</button>
+           <button v-if="newUser.id" @click="resetUserForm" type="button" class="ml-2 bg-gray-200 text-gray-800 py-2 px-4 rounded hover:bg-gray-300">Abbrechen</button>
+        </form>
+      </div>
+
+      <div>
+        <h4 class="font-semibold mb-2">{{ t.existingUsers }}</h4>
+        <ul class="max-h-60 overflow-y-auto border rounded-md divide-y"><li v-for="user in userList" :key="user.id" class="flex justify-between items-center p-2">
+          <div>
+            <p>{{ user.email }} <span v-if="user.isAdmin" class="text-xs text-green-600 font-semibold">(Admin)</span></p>
+            <p v-if="user.technicianName" class="text-xs text-gray-500">Techniker: {{ user.technicianName }}</p>
+          </div>
+          <div>
+            <button @click="editUser(user)" class="text-indigo-600 hover:text-indigo-800 text-sm mr-4">{{ t.editButton }}</button>
+            <button @click="confirmDelete('user', user)" class="text-red-500 hover:text-red-700 text-sm">{{ t.deleteButton }}</button>
+          </div>
+        </li></ul>
+      </div>
+      <div class="mt-6 flex justify-end"><button @click="showUserManagement = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">{{ t.closeButton }}</button></div>
+    </div>
+  </div>
+
 
   <!-- Toast Notifications Container -->
   <div class="toast-container">
@@ -581,6 +668,7 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
   import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
   import { getFirestore, collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, serverTimestamp, query, getDocs, setDoc, orderBy, where, enableIndexedDbPersistence, writeBatch } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+  import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-storage.js";
   
   // Vue 3
   import { createApp } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
@@ -597,6 +685,7 @@
   const firebaseApp = initializeApp(firebaseConfig);
   const auth = getAuth(firebaseApp);
   const db = getFirestore(firebaseApp);
+  const storage = getStorage(firebaseApp);
   
   // Enable Firestore offline persistence only on mobile devices
   const isMobileDevice = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -611,7 +700,7 @@
   const appConfig = {
     data() {
       return {
-        version: '1.58',
+        version: '1.63',
         isAuthReady: false,
         user: { loggedIn: false, email: null, uid: null, isAdmin: false, technicianName: null },
         loginForm: { email: '', password: '', error: '' },
@@ -624,7 +713,7 @@
         technikerList: [],
         userList: [],
         commonErrors: [],
-        newEntry: { house: '', captured_at: new Date().toISOString().slice(0,10), date: '', fiche: '', fiche_engagement: '', ipei: '', pid: '', error: '', status: 'Offen', comments: [], techniker: '' },
+        newEntry: { house: '', captured_at: new Date().toISOString().slice(0,10), date: '', fiche: '', fiche_engagement: '', ipei: '', pid: '', error: '', status: 'Offen', comments: [], techniker: '', attachments: [] },
         
         qrCodeInput: '',
         qrScanTimer: null,
@@ -647,12 +736,20 @@
         showFehlerManagement: false,
         showQrCodeManagement: false,
         showUserManagement: false,
+        showKnowledgeBaseManagement: false,
+        showSolutionModal: false,
 
         newHouseName: '',
         newTechnicianName: '',
         newCommonError: '',
-        newUser: { email: '', isAdmin: false, technicianName: ''},
+        newUser: { id: null, email: '', isAdmin: false, technicianName: ''},
         
+        knowledgeBase: [],
+        newSolution: { id: null, title: '', content: '', relatedErrors: '' },
+        currentSolution: {},
+        errorSuggestions: [],
+        showErrorSuggestions: false,
+
         qrCodePatterns: [],
         qrFields: [
             { key: 'fiche', label: 'Gerät-Code', placeholder: 'Teilstring für Gerät...' },
@@ -665,6 +762,7 @@
 
         selectedRepairs: [],
         bulkEdit: { technician: '', status: '' },
+        uploadProgress: { active: false, percent: 0, text: '' },
 
         showConfirmModal: false,
         confirmMessage: '',
@@ -674,6 +772,11 @@
         
         // Dashboard
         allRepairsForStats: [],
+        charts: {
+            status: null,
+            errors: null,
+            houses: null
+        },
 
         // Internationalization (i18n)
         currentLanguage: 'de',
@@ -690,6 +793,7 @@
                 technicians: "Techniker",
                 manageHouses: "Häuser verwalten",
                 manageErrors: "Fehler verwalten",
+                manageKnowledgeBase: "Wissensbasis verwalten",
                 manageQrCodes: "Geräte & QR-Codes verwalten",
                 loggedInAs: "Angemeldet als",
                 newRepairEntry: "Neuer Reparatur-Eintrag",
@@ -721,10 +825,10 @@
                 statusCompleted: "Abgeschlossen",
                 statusCompletedAtCustomer: "Beim Kunden repariert",
                 noOne: "Niemand",
-                totalRepairs: "Gesamte Reparaturen",
+                statusDistribution: "Status Verteilung",
                 openCases: "Offene Fälle",
                 casesPerHouse: "Fälle pro Haus",
-                mostCommonErrors: "Häufigste Fehler (Top 5)",
+                mostCommonErrors: "Häufigste Fehler",
                 editEntry: "Eintrag bearbeiten",
                 commentHistory: "Historie & Kommentare",
                 noCommentsYet: "Noch keine Kommentare.",
@@ -778,7 +882,7 @@
                 notifBulkUpdateSuccess: (count) => `${count} Einträge erfolgreich aktualisiert.`,
                 notifBulkUpdateError: "Fehler bei der Massenbearbeitung.",
                 ipeiHistoryFound: "gesehen",
-                ipeiHistoryTooltip: (count) => `Diese IPEI wurde bereits in ${count} anderen Einträgen gefunden.`,
+                ipeiHistoryTooltip: (count) => `Diese IPEI wurde bereits in ${count} anderen Einträgen gefunden. Klicken um die Historie anzuzeigen.`,
                 generateEmailButton: "E-Mail generieren",
                 emailGenerationTitle: "E-Mail Inhalt generieren",
                 emailGenerationInfo: "Der folgende Text wurde generiert. Kopieren Sie ihn und fügen Sie ihn in Ihr E-Mail-Programm ein.",
@@ -791,7 +895,24 @@
                 logoutButton: "Abmelden",
                 emailPlaceholder: "E-Mail-Adresse",
                 passwordPlaceholder: "Passwort",
-                loginError: "E-Mail oder Passwort ist falsch."
+                loginError: "E-Mail oder Passwort ist falsch.",
+                attachments: "Dateianhänge",
+                uploadButton: "Dateien hochladen...",
+                noAttachments: "Keine Anhänge vorhanden.",
+                uploadProgressText: (name) => `Lade '${name}' hoch...`,
+                uploadSuccess: "Datei erfolgreich hochgeladen.",
+                uploadError: "Fehler beim Hochladen der Datei.",
+                deleteAttachmentConfirm: "Möchten Sie diesen Anhang wirklich löschen?",
+                knowledgeBase: "Wissensbasis",
+                solutionTitle: "Titel der Lösung",
+                solutionContent: "Inhalt / Anleitung",
+                relatedErrors: "Zugehörige Fehler (durch Komma getrennt)",
+                relatedErrorsPlaceholder: "z.B. E-102, Error 102, Rotes Licht",
+                newSolution: "Neuer Lösungsartikel",
+                editSolution: "Lösungsartikel bearbeiten",
+                saveSolution: "Lösung speichern",
+                solution: "Lösung",
+                noSolutionsFound: "Keine Lösungen gefunden.",
             },
             fr: { /* ... */ }
         }
@@ -835,9 +956,22 @@
               this.isCheckingIpei = false;
           }
       },
-      currentView(newView) {
-        if (newView === 'dashboard' && this.allRepairsForStats.length === 0) {
-            this.loadAllRepairsForStats();
+      'newEntry.error'(newValue) {
+        this.searchSolutions(newValue);
+      },
+      'currentEdit.error'(newValue) {
+        this.searchSolutions(newValue);
+      },
+      currentView(newView, oldView) {
+        if (newView === 'dashboard') {
+            this.loadAllRepairsForStats().then(() => {
+                this.$nextTick(() => {
+                    this.renderCharts();
+                });
+            });
+        }
+        if(oldView === 'dashboard'){
+            this.destroyCharts();
         }
       },
       isOnline(newStatus) {
@@ -973,6 +1107,12 @@
           } else if (type === 'qrPattern') {
               this.confirmMessage = `QR-Muster "${item.name}" wirklich löschen?`;
               this.confirmAction = () => this.deletePattern(item.id);
+          } else if (type === 'knowledgeBase') {
+              this.confirmMessage = `Lösungsartikel "${item.title}" wirklich löschen?`;
+              this.confirmAction = () => this.deleteSolution(item.id);
+          } else if (type === 'user') {
+              this.confirmMessage = `Benutzer "${item.email}" wirklich löschen?`;
+              this.confirmAction = () => this.deleteUser(item.id);
           }
           this.showConfirmModal = true;
       },
@@ -984,7 +1124,7 @@
         const lastSelectedHouse = this.newEntry.house;
         const dataToSave = JSON.parse(JSON.stringify(this.newEntry));
         await addDoc(collection(db,'repairs'), { ...dataToSave, cost:0, createdAt: serverTimestamp() });
-        Object.assign(this.newEntry, { captured_at:new Date().toISOString().slice(0,10), date:'', fiche:'', fiche_engagement:'', ipei:'', pid:'', error:'', status:'Offen', comments: [], techniker: '' });
+        Object.assign(this.newEntry, { captured_at:new Date().toISOString().slice(0,10), date:'', fiche:'', fiche_engagement:'', ipei:'', pid:'', error:'', status:'Offen', comments: [], techniker: '', attachments: [] });
         this.newEntry.house = lastSelectedHouse;
         this.showNotification(this.t.notifRepairAdded, 'success');
       },
@@ -994,6 +1134,7 @@
         this.originalEdit = JSON.parse(JSON.stringify(r)); // Für Audit Trail
         if (!this.currentEdit.comments) this.currentEdit.comments = [];
         if (!this.currentEdit.techniker) this.currentEdit.techniker = '';
+        if (!this.currentEdit.attachments) this.currentEdit.attachments = [];
         this.showEditModal = true; 
       },
       async saveEdit(){
@@ -1045,32 +1186,57 @@
             this.showNotification(this.t.notifQrError, 'error');
         }
       },
-      parseQRCodeData(text) {
-        const cleanedText = String(text || '').replace(/[\x00-\x1F\x7F-\x9F]/g, "").replace(/\s+/g, ' ').trim();
-        if (!cleanedText || this.qrCodePatterns.length === 0) return null;
+       parseQRCodeData(text) {
+        const cleanedText = String(text || '').replace(/[\x00-\x1F\x7F-\x9F]/g, "").trim();
+        if (!cleanedText) return null;
+
+        const normalize = (str) => String(str || '').replace(/^\[?\)>?\d{2}/, '').replace(/\s+/g, '');
+        const scannedText = normalize(cleanedText);
 
         for (const pattern of this.qrCodePatterns) {
             if (!pattern.example || !pattern.parts) continue;
-            const sortedParts = Object.entries(pattern.parts).filter(([, value]) => value).map(([key, value]) => ({ key, value, index: pattern.example.indexOf(value) })).filter(part => part.index !== -1).sort((a, b) => a.index - b.index);
+            
+            const exampleText = normalize(pattern.example);
+
+            const sortedParts = Object.entries(pattern.parts)
+                .filter(([, value]) => value)
+                .map(([key, value]) => ({ key, value: normalize(value), index: exampleText.indexOf(normalize(value)) }))
+                .filter(part => part.index !== -1)
+                .sort((a, b) => a.index - b.index);
+
             if (sortedParts.length === 0) continue;
-            let tempText = cleanedText;
+            
+            let tempScannedText = scannedText;
             const extractedData = {};
             let allPartsFound = true;
+            let lastKnownIndexInExample = 0;
+
             for (let i = 0; i < sortedParts.length; i++) {
                 const currentPart = sortedParts[i];
                 const nextPart = sortedParts[i + 1];
-                const startDelimiterIndex = (i === 0) ? 0 : pattern.example.indexOf(sortedParts[i-1].value) + sortedParts[i-1].value.length;
-                const startDelimiter = pattern.example.substring(startDelimiterIndex, currentPart.index);
-                const endDelimiterIndex = nextPart ? nextPart.index : pattern.example.length;
-                const endDelimiter = pattern.example.substring(currentPart.index + currentPart.value.length, endDelimiterIndex);
-                const startIndex = startDelimiter ? tempText.indexOf(startDelimiter) : 0;
-                if (startIndex === -1) { allPartsFound = false; break; }
-                const searchStart = startIndex + (startDelimiter ? startDelimiter.length : 0);
-                const endIndex = endDelimiter ? tempText.indexOf(endDelimiter, searchStart) : -1;
-                if (endIndex === -1 && endDelimiter) { allPartsFound = false; break; }
-                extractedData[currentPart.key] = tempText.substring(searchStart, endIndex === -1 ? undefined : endIndex);
-                tempText = tempText.substring(endIndex === -1 ? tempText.length : endIndex);
+                
+                const startDelimiter = exampleText.substring(lastKnownIndexInExample, currentPart.index);
+                const startIndexInScan = tempScannedText.indexOf(startDelimiter);
+
+                if (startIndexInScan === -1) { allPartsFound = false; break; }
+                
+                const searchStart = startIndexInScan + startDelimiter.length;
+                
+                const nextDelimiterStartInExample = currentPart.index + currentPart.value.length;
+                const endDelimiter = nextPart ? exampleText.substring(nextDelimiterStartInExample, nextPart.index) : null;
+                
+                let endIndexInScan = tempScannedText.length;
+                if(endDelimiter) {
+                    endIndexInScan = tempScannedText.indexOf(endDelimiter, searchStart);
+                }
+                
+                if (endIndexInScan === -1) { allPartsFound = false; break; }
+
+                extractedData[currentPart.key] = tempScannedText.substring(searchStart, endIndexInScan);
+                tempScannedText = tempScannedText.substring(endIndexInScan);
+                lastKnownIndexInExample = nextDelimiterStartInExample;
             }
+
             if (allPartsFound && Object.keys(extractedData).length > 0) {
                  if (pattern.deviceName) extractedData.fiche = pattern.deviceName;
                  return extractedData;
@@ -1102,6 +1268,11 @@
         } finally {
           this.isCheckingIpei = false;
         }
+      },
+      showIpeiHistory(ipei, fromModal = false) {
+          this.filter.search = ipei;
+          this.currentView = 'repairs';
+          if(fromModal) this.showEditModal = false;
       },
       async addHouse(){
         if(this.newHouseName && !this.houses.includes(this.newHouseName)){
@@ -1213,12 +1384,8 @@
         document.body.appendChild(textArea);
         textArea.focus();
         textArea.select();
-        try {
-            document.execCommand('copy');
-            this.showNotification(this.t.copySuccess, 'success');
-        } catch (err) {
-            this.showNotification(this.t.copyError, 'error');
-        }
+        try { document.execCommand('copy'); this.showNotification(this.t.copySuccess, 'success'); }
+        catch (err) { this.showNotification(this.t.copyError, 'error'); }
         document.body.removeChild(textArea);
       },
       exportPDF(repair) {
@@ -1328,51 +1495,193 @@
       },
       async login(){
         this.loginForm.error = '';
-        try { 
-          await signInWithEmailAndPassword(auth, this.loginForm.email, this.loginForm.password); 
-        } catch(e){ 
-          this.loginForm.error = this.t.loginError; 
-          console.error(e); 
-        }
+        try { await signInWithEmailAndPassword(auth, this.loginForm.email, this.loginForm.password); }
+        catch(e){ this.loginForm.error = this.t.loginError; console.error(e); }
       },
       async logout(){ await signOut(auth); },
+      searchSolutions(searchTerm) {
+        if (!searchTerm || searchTerm.length < 2) {
+            this.errorSuggestions = [];
+            return;
+        }
+        const lowerCaseSearch = searchTerm.toLowerCase();
+        this.errorSuggestions = this.knowledgeBase.filter(solution => {
+            const titleMatch = solution.title.toLowerCase().includes(lowerCaseSearch);
+            const keywords = (solution.relatedErrors || '').split(',').map(k => k.trim().toLowerCase());
+            const keywordMatch = keywords.some(k => k.includes(lowerCaseSearch));
+            return titleMatch || keywordMatch;
+        });
+      },
+      showSolution(solution) {
+        this.currentSolution = solution;
+        this.showSolutionModal = true;
+      },
+      hideErrorSuggestions() {
+        // Delay hiding to allow click event to register
+        setTimeout(() => { this.showErrorSuggestions = false; }, 200);
+      },
+      destroyCharts() {
+        for (const chartKey in this.charts) {
+          if (this.charts[chartKey]) {
+            this.charts[chartKey].destroy();
+            this.charts[chartKey] = null;
+          }
+        }
+      },
+      renderCharts() {
+        this.destroyCharts(); // Clear previous charts
+
+        // Status Chart
+        const statusCtx = document.getElementById('statusChart')?.getContext('2d');
+        if (statusCtx) {
+          const statusCounts = this.allRepairsForStats.reduce((acc, r) => {
+            const statusKey = this.t[this.getStatusTranslationKey(r.status)] || r.status;
+            acc[statusKey] = (acc[statusKey] || 0) + 1;
+            return acc;
+          }, {});
+
+          this.charts.status = new Chart(statusCtx, {
+            type: 'doughnut',
+            data: {
+              labels: Object.keys(statusCounts),
+              datasets: [{
+                label: 'Status',
+                data: Object.values(statusCounts),
+                backgroundColor: [ '#ef4444', '#3b82f6', '#22c55e', '#10b981' ],
+                hoverOffset: 4
+              }]
+            }
+          });
+        }
+        
+        // Errors Chart
+        const errorsCtx = document.getElementById('errorsChart')?.getContext('2d');
+        if (errorsCtx) {
+            const mostCommonErrors = this.mostCommonErrors;
+            this.charts.errors = new Chart(errorsCtx, {
+                type: 'bar',
+                data: {
+                    labels: mostCommonErrors.map(e => e.name),
+                    datasets: [{
+                        label: 'Anzahl',
+                        data: mostCommonErrors.map(e => e.count),
+                        backgroundColor: '#6366f1',
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    scales: {
+                        x: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        // Houses Chart
+        const housesCtx = document.getElementById('housesChart')?.getContext('2d');
+        if (housesCtx) {
+             const repairsByHouse = this.repairsByHouse;
+             this.charts.houses = new Chart(housesCtx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(repairsByHouse),
+                    datasets: [{
+                        label: 'Anzahl Reparaturen',
+                        data: Object.values(repairsByHouse),
+                        backgroundColor: '#8b5cf6',
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+      },
+      async saveUserRole(){
+        if(!this.newUser.email){ this.showNotification("Bitte E-Mail angeben.", 'error'); return; }
+        try{
+            const dataToSave = {
+                email: this.newUser.email,
+                isAdmin: this.newUser.isAdmin,
+                technicianName: this.newUser.technicianName || null
+            };
+            if (this.newUser.id) {
+                // Update
+                const userRef = doc(db, 'users', this.newUser.id);
+                await updateDoc(userRef, dataToSave);
+                this.showNotification("Benutzer aktualisiert.", 'success');
+            } else {
+                // Add new
+                 const qUsers = query(collection(db,'users'), where('email','==',this.newUser.email));
+                const existing = await getDocs(qUsers);
+                if(!existing.empty){ this.showNotification("Ein Benutzer mit dieser E-Mail existiert bereits.", 'error'); return; }
+                await addDoc(collection(db,'users'), dataToSave);
+                this.showNotification("Benutzer hinzugefügt.", 'success');
+            }
+            this.resetUserForm();
+        }catch(e){ this.showNotification("Fehler: "+e.message, 'error'); }
+      },
+      async deleteUser(userId){ await deleteDoc(doc(db,'users',userId)); },
+      editUser(user) {
+        this.newUser = { ...user };
+      },
+      resetUserForm() {
+        this.newUser = { id: null, email: '', isAdmin: false, technicianName: '' };
+      },
+      async saveSolution() {
+          if (!this.newSolution.title || !this.newSolution.content) {
+              this.showNotification("Titel und Inhalt sind Pflichtfelder.", 'error');
+              return;
+          }
+          const dataToSave = { ...this.newSolution };
+          try {
+              if (dataToSave.id) {
+                  const solutionRef = doc(db, 'knowledgeBase', dataToSave.id);
+                  delete dataToSave.id;
+                  await updateDoc(solutionRef, dataToSave);
+                   this.showNotification("Lösung aktualisiert.", 'success');
+              } else {
+                  await addDoc(collection(db, 'knowledgeBase'), dataToSave);
+                   this.showNotification("Lösung gespeichert.", 'success');
+              }
+              this.newSolution = { id: null, title: '', content: '', relatedErrors: '' };
+          } catch(e) {
+              console.error(e);
+              this.showNotification("Fehler beim Speichern der Lösung.", 'error');
+          }
+      },
+      async deleteSolution(solutionId) {
+          try {
+              await deleteDoc(doc(db, 'knowledgeBase', solutionId));
+              this.showNotification("Lösung gelöscht.", 'info');
+          } catch(e) {
+              console.error(e);
+              this.showNotification("Fehler beim Löschen der Lösung.", 'error');
+          }
+      },
+      editSolution(solution) {
+          this.newSolution = { ...solution };
+      }
     },
     async mounted(){
       window.addEventListener('online', () => this.isOnline = true);
       window.addEventListener('offline', () => this.isOnline = false);
       document.addEventListener('fullscreenchange', this.handleFullscreenChange);
 
-      const authCheck = new Promise(resolve => {
-        onAuthStateChanged(auth, async (u)=>{
-          if(u){
-            this.user = { loggedIn:true, email:u.email, uid:u.uid, isAdmin:false, technicianName: null };
-            const userDocQuery = query(collection(db,'users'), where('email','==',u.email));
-            const userDocSnap = await getDocs(userDocQuery);
-
-            if(!userDocSnap.empty){
-                const userData = userDocSnap.docs[0].data();
-                this.user.isAdmin = userData.isAdmin || false;
-                this.user.technicianName = userData.technicianName || null;
-            }
-            
-            this.listenToRepairs();
-            this.listenToConfig('houses', 'houses', 'list');
-            this.listenToConfig('technicians', 'technikerList', 'list');
-            if(this.user.isAdmin) {
-                onSnapshot(collection(db,'users'), s => { this.userList = s.docs.map(d => ({ id:d.id, ...d.data() })); });
-                this.listenToConfig('qrCodePatterns', 'qrCodePatterns', 'patterns');
-                this.listenToConfig('commonErrors', 'commonErrors', 'list');
-            }
-          } else {
-            this.user = { loggedIn:false, email:null, uid:null, isAdmin:false, technicianName: null };
-            this.repairs = []; this.userList = []; this.houses = []; this.technikerList = [];
-          }
-          resolve();
-        });
-      });
-
-      const minDelay = new Promise(resolve => setTimeout(resolve, 1500));
-      await Promise.all([authCheck, minDelay]);
+      // --- Test-Modus ohne Login ---
+      this.user = { loggedIn: true, email: 'test@user.com', uid: 'test-uid', isAdmin: true, technicianName: 'Test Techniker' };
+      this.listenToRepairs();
+      this.listenToConfig('houses', 'houses', 'list');
+      this.listenToConfig('technicians', 'technikerList', 'list');
+      if (this.user.isAdmin) {
+        onSnapshot(collection(db,'users'), s => { this.userList = s.docs.map(d => ({ id:d.id, ...d.data() })); });
+        this.listenToConfig('qrCodePatterns', 'qrCodePatterns', 'patterns');
+        this.listenToConfig('commonErrors', 'commonErrors', 'list');
+        this.listenToConfig('knowledgeBase', 'knowledgeBase', 'solutions');
+      }
+      await new Promise(resolve => setTimeout(resolve, 1500));
       this.isAuthReady = true;
     }
   };
