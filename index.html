@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Reparatur Manager Online v1.69</title>
+  <title>Reparatur Manager Online v1.75</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -334,15 +334,15 @@
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div class="bg-white p-6 rounded-lg shadow-md">
                 <h3 class="text-lg font-semibold mb-4">{{ t.statusDistribution }}</h3>
-                <canvas id="statusChart"></canvas>
+                 <div class="relative h-64 md:h-80"><canvas id="statusChart"></canvas></div>
             </div>
              <div class="bg-white p-6 rounded-lg shadow-md">
                 <h3 class="text-lg font-semibold mb-4">{{ t.mostCommonErrors }}</h3>
-                <canvas id="errorsChart"></canvas>
+                 <div class="relative h-64 md:h-80"><canvas id="errorsChart"></canvas></div>
             </div>
              <div class="bg-white p-6 rounded-lg shadow-md lg:col-span-2">
                 <h3 class="text-lg font-semibold mb-4">{{ t.casesPerHouse }}</h3>
-                <canvas id="housesChart"></canvas>
+                 <div class="relative h-96"><canvas id="housesChart"></canvas></div>
             </div>
         </div>
     </div>
@@ -449,113 +449,40 @@
     </div>
   </div>
 
-
-    <!-- QR Code Management Modal -->
-    <div v-if="showQrCodeManagement" class="modal-backdrop">
-        <div class="modal-content">
-            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">{{ t.manageQrCodes }}</h3>
-
-            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
-                <p class="font-bold">{{ t.qrManagementTitle }}</p>
-                <p class="text-sm mt-1">{{ t.qrManagementInfo }}</p>
-            </div>
-
-            <!-- Pattern Form -->
-            <div class="p-4 border rounded-md mb-6">
-                <h4 class="font-semibold mb-2">{{ currentPattern.id ? t.editPatternTitle : t.newPatternTitle }}</h4>
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ t.patternNameLabel }}</label>
-                        <input v-model="currentPattern.name" type="text" :placeholder="t.patternNamePlaceholder" class="mt-1 p-2 border rounded w-full">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ t.exampleQrLabel }}</label>
-                        <textarea v-model="currentPattern.example" @input="updatePreview" rows="3" :placeholder="t.exampleQrPlaceholder" class="mt-1 p-2 border rounded w-full font-mono"></textarea>
-                    </div>
-
-                    <!-- Fields -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div v-for="field in qrFields" :key="field.key">
-                            <label class="block text-sm font-medium text-gray-700">{{ field.label }}</label>
-                            <input v-model="currentPattern.parts[field.key]" @input="updatePreview" type="text" :placeholder="field.placeholder" class="mt-1 p-2 border rounded w-full font-mono">
-                        </div>
-                    </div>
-                     <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ t.deviceNameLabel }}</label>
-                        <input v-model="currentPattern.deviceName" @input="updatePreview" type="text" :placeholder="t.deviceNamePlaceholder" class="mt-1 p-2 border rounded w-full">
-                    </div>
-
-                    <!-- Preview -->
-                    <div v-if="qrPreview.fiche">
-                        <h5 class="font-semibold text-sm mb-2">{{ t.previewTitle }}</h5>
-                        <div class="bg-gray-50 p-3 rounded-md text-sm space-y-1">
-                            <p v-for="(value, key) in qrPreview" :key="key">
-                                <span class="font-semibold">{{ t.qrFields[key] }}:</span>
-                                <span class="ml-2 font-mono bg-gray-200 px-1 rounded">{{ value }}</span>
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                <div class="mt-4 space-x-2">
-                    <button @click="savePattern" class="bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700 text-sm">{{ t.savePatternButton }}</button>
-                    <button v-if="currentPattern.id" @click="resetPatternForm" class="bg-gray-200 text-gray-800 py-2 px-4 rounded hover:bg-gray-300 text-sm">{{ t.cancelEditButton }}</button>
-                </div>
-            </div>
-
-            <!-- Existing Patterns List -->
-            <div>
-                <h4 class="font-semibold mb-2">{{ t.existingPatternsTitle }}</h4>
-                <ul class="max-h-60 overflow-y-auto border rounded-md divide-y">
-                    <li v-for="pattern in qrCodePatterns" :key="pattern.id" class="p-3 flex justify-between items-center">
-                        <div>
-                            <p class="font-semibold">{{ pattern.name }}</p>
-                            <p class="text-xs text-gray-500 font-mono">{{ (pattern.example || '').substring(0, 50) }}...</p>
-                        </div>
-                        <div class="space-x-2">
-                            <button @click="editPattern(pattern)" class="text-indigo-600 hover:text-indigo-800 text-sm">{{ t.editButton }}</button>
-                            <button @click="confirmDelete('qrPattern', pattern)" class="text-red-500 hover:text-red-700 text-sm">{{ t.deleteButton }}</button>
-                        </div>
-                    </li>
-                     <li v-if="qrCodePatterns.length === 0" class="p-3 text-sm text-gray-500">{{ t.noPatternsInfo }}</li>
-                </ul>
-            </div>
-
-            <div class="mt-6 flex justify-end">
-                <button @click="showQrCodeManagement = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">{{ t.closeButton }}</button>
-            </div>
-        </div>
-    </div>
-  
-  <!-- Confirmation Modal -->
-  <div v-if="showConfirmModal" class="modal-backdrop">
-    <div class="modal-content max-w-sm">
-        <h3 class="text-lg font-medium text-gray-900">{{ t.confirmAction }}</h3>
-        <p class="mt-2 text-sm text-gray-600">{{ confirmMessage }}</p>
-        <div class="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
-            <button @click="executeConfirm" type="button" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none sm:col-start-2 sm:text-sm">
-                {{ t.deleteButton }}
-            </button>
-            <button @click="cancelConfirm" type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:col-start-1 sm:text-sm">
-                {{ t.cancelButton }}
-            </button>
-        </div>
-    </div>
-  </div>
-
-  <!-- Email Generation Modal -->
-  <div v-if="showEmailModal" class="modal-backdrop">
+   <!-- User Management Modal -->
+  <div v-if="showUserManagement" class="modal-backdrop">
     <div class="modal-content">
-      <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">{{ t.emailGenerationTitle }}</h3>
-      <p class="text-sm text-gray-600 mb-4">{{ t.emailGenerationInfo }}</p>
-      <textarea readonly class="w-full h-64 p-2 border rounded font-mono text-sm bg-gray-50">{{ generatedEmailContent }}</textarea>
-      <div class="mt-6 flex justify-between">
-        <button @click="copyToClipboard(generatedEmailContent)" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md">{{ t.copyTextButton }}</button>
-        <button @click="showEmailModal = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">{{ t.closeButton }}</button>
+      <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">{{ t.manageUsers }}</h3>
+      
+       <div class="mb-6 p-4 border rounded-md">
+        <h4 class="font-semibold mb-2">{{ newUser.id ? 'Benutzer bearbeiten' : 'Neuen Benutzer hinzufügen' }}</h4>
+        <form @submit.prevent="saveUserRole">
+          <input v-model="newUser.email" type="email" placeholder="E-Mail des Benutzers" required class="block w-full mb-2 p-2 border rounded">
+          <input v-model="newUser.technicianName" type="text" placeholder="Technikername (optional, muss exakt übereinstimmen)" class="block w-full mb-2 p-2 border rounded">
+          <div class="flex items-center mb-2"><input v-model="newUser.isAdmin" type="checkbox" id="isAdmin" class="h-4 w-4 text-indigo-600 border-gray-300 rounded"><label for="isAdmin" class="ml-2 block text-sm text-gray-900">Ist Administrator?</label></div>
+          <button type="submit" class="bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700">Speichern</button>
+           <button v-if="newUser.id" @click="resetUserForm" type="button" class="ml-2 bg-gray-200 text-gray-800 py-2 px-4 rounded hover:bg-gray-300">Abbrechen</button>
+        </form>
       </div>
+
+      <div>
+        <h4 class="font-semibold mb-2">{{ t.existingUsers }}</h4>
+        <ul class="max-h-60 overflow-y-auto border rounded-md divide-y"><li v-for="user in userList" :key="user.id" class="flex justify-between items-center p-2">
+          <div>
+            <p>{{ user.email }} <span v-if="user.isAdmin" class="text-xs text-green-600 font-semibold">(Admin)</span></p>
+            <p v-if="user.technicianName" class="text-xs text-gray-500">Techniker: {{ user.technicianName }}</p>
+          </div>
+          <div>
+            <button @click="editUser(user)" class="text-indigo-600 hover:text-indigo-800 text-sm mr-4">{{ t.editButton }}</button>
+            <button @click="confirmDelete('user', user)" class="text-red-500 hover:text-red-700 text-sm">{{ t.deleteButton }}</button>
+          </div>
+        </li></ul>
+      </div>
+      <div class="mt-6 flex justify-end"><button @click="showUserManagement = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">{{ t.closeButton }}</button></div>
     </div>
   </div>
 
-  <!-- KNOWLEDGE BASE MODALS (ADD/EDIT & VIEW) -->
+    <!-- KNOWLEDGE BASE MODALS (ADD/EDIT & VIEW) -->
   <div v-if="showKnowledgeBaseManagement" class="modal-backdrop">
     <div class="modal-content">
         <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">{{ t.manageKnowledgeBase }}</h3>
@@ -605,36 +532,88 @@
     </div>
   </div>
 
-   <!-- User Management Modal -->
-  <div v-if="showUserManagement" class="modal-backdrop">
-    <div class="modal-content">
-      <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">{{ t.manageUsers }}</h3>
-      
-       <div class="mb-6 p-4 border rounded-md">
-        <h4 class="font-semibold mb-2">{{ newUser.id ? 'Benutzer bearbeiten' : 'Neuen Benutzer hinzufügen' }}</h4>
-        <form @submit.prevent="saveUserRole">
-          <input v-model="newUser.email" type="email" placeholder="E-Mail des Benutzers" required class="block w-full mb-2 p-2 border rounded">
-          <input v-model="newUser.technicianName" type="text" placeholder="Technikername (optional, muss exakt übereinstimmen)" class="block w-full mb-2 p-2 border rounded">
-          <div class="flex items-center mb-2"><input v-model="newUser.isAdmin" type="checkbox" id="isAdmin" class="h-4 w-4 text-indigo-600 border-gray-300 rounded"><label for="isAdmin" class="ml-2 block text-sm text-gray-900">Ist Administrator?</label></div>
-          <button type="submit" class="bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700">Speichern</button>
-           <button v-if="newUser.id" @click="resetUserForm" type="button" class="ml-2 bg-gray-200 text-gray-800 py-2 px-4 rounded hover:bg-gray-300">Abbrechen</button>
-        </form>
-      </div>
+    <!-- QR Code Management Modal -->
+    <div v-if="showQrCodeManagement" class="modal-backdrop">
+        <div class="modal-content">
+            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">{{ t.manageQrCodes }}</h3>
+            <div class="p-4 border rounded-md mb-6">
+                <h4 class="font-semibold mb-2">{{ currentPattern.id ? t.editPatternTitle : t.newPatternTitle }}</h4>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">{{ t.patternNameLabel }}</label>
+                        <input v-model="currentPattern.name" type="text" :placeholder="t.patternNamePlaceholder" class="mt-1 p-2 border rounded w-full">
+                    </div>
+                     <div>
+                        <label class="block text-sm font-medium text-gray-700">{{ t.deviceNameLabel }}</label>
+                        <input v-model="currentPattern.deviceName" type="text" :placeholder="t.deviceNamePlaceholder" class="mt-1 p-2 border rounded w-full">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">{{ t.exampleQrLabel }}</label>
+                        <textarea v-model="currentPattern.example" @input="updatePreviewFromExample" rows="4" :placeholder="t.exampleQrPlaceholder" class="mt-1 p-2 border rounded w-full font-mono"></textarea>
+                    </div>
+                    <div v-if="Object.keys(currentPattern.parts).length > 0">
+                        <h5 class="font-semibold text-sm mb-2">{{ t.previewTitle }}</h5>
+                        <div class="bg-gray-50 p-3 rounded-md text-sm space-y-2">
+                             <div v-for="(field, key) in qrFields" :key="key">
+                                <label class="block text-xs font-medium text-gray-500">{{ field.label }}</label>
+                                <input v-model="currentPattern.parts[key]" type="text" class="mt-1 p-1 border rounded w-full font-mono text-xs">
+                             </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 space-x-2">
+                    <button @click="savePattern" class="bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700 text-sm">{{ t.savePatternButton }}</button>
+                    <button v-if="currentPattern.id" @click="resetPatternForm" class="bg-gray-200 text-gray-800 py-2 px-4 rounded hover:bg-gray-300 text-sm">{{ t.cancelEditButton }}</button>
+                </div>
+            </div>
+            <div>
+                <h4 class="font-semibold mb-2">{{ t.existingPatternsTitle }}</h4>
+                <ul class="max-h-60 overflow-y-auto border rounded-md divide-y">
+                    <li v-for="pattern in qrCodePatterns" :key="pattern.id" class="p-3 flex justify-between items-center">
+                        <div>
+                            <p class="font-semibold">{{ pattern.name }} <span class="text-xs text-gray-500">({{pattern.deviceName}})</span></p>
+                        </div>
+                        <div class="space-x-2">
+                            <button @click="editPattern(pattern)" class="text-indigo-600 hover:text-indigo-800 text-sm">{{ t.editButton }}</button>
+                            <button @click="confirmDelete('qrPattern', pattern)" class="text-red-500 hover:text-red-700 text-sm">{{ t.deleteButton }}</button>
+                        </div>
+                    </li>
+                     <li v-if="qrCodePatterns.length === 0" class="p-3 text-sm text-gray-500">{{ t.noPatternsInfo }}</li>
+                </ul>
+            </div>
+            <div class="mt-6 flex justify-end">
+                <button @click="showQrCodeManagement = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">{{ t.closeButton }}</button>
+            </div>
+        </div>
+    </div>
 
-      <div>
-        <h4 class="font-semibold mb-2">{{ t.existingUsers }}</h4>
-        <ul class="max-h-60 overflow-y-auto border rounded-md divide-y"><li v-for="user in userList" :key="user.id" class="flex justify-between items-center p-2">
-          <div>
-            <p>{{ user.email }} <span v-if="user.isAdmin" class="text-xs text-green-600 font-semibold">(Admin)</span></p>
-            <p v-if="user.technicianName" class="text-xs text-gray-500">Techniker: {{ user.technicianName }}</p>
-          </div>
-          <div>
-            <button @click="editUser(user)" class="text-indigo-600 hover:text-indigo-800 text-sm mr-4">{{ t.editButton }}</button>
-            <button @click="confirmDelete('user', user)" class="text-red-500 hover:text-red-700 text-sm">{{ t.deleteButton }}</button>
-          </div>
-        </li></ul>
+
+  <!-- Confirmation Modal -->
+  <div v-if="showConfirmModal" class="modal-backdrop">
+    <div class="modal-content max-w-sm">
+        <h3 class="text-lg font-medium text-gray-900">{{ t.confirmAction }}</h3>
+        <p class="mt-2 text-sm text-gray-600">{{ confirmMessage }}</p>
+        <div class="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
+            <button @click="executeConfirm" type="button" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none sm:col-start-2 sm:text-sm">
+                {{ t.deleteButton }}
+            </button>
+            <button @click="cancelConfirm" type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:col-start-1 sm:text-sm">
+                {{ t.cancelButton }}
+            </button>
+        </div>
+    </div>
+  </div>
+
+  <!-- Email Generation Modal -->
+  <div v-if="showEmailModal" class="modal-backdrop">
+    <div class="modal-content">
+      <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">{{ t.emailGenerationTitle }}</h3>
+      <p class="text-sm text-gray-600 mb-4">{{ t.emailGenerationInfo }}</p>
+      <textarea readonly class="w-full h-64 p-2 border rounded font-mono text-sm bg-gray-50">{{ generatedEmailContent }}</textarea>
+      <div class="mt-6 flex justify-between">
+        <button @click="copyToClipboard(generatedEmailContent)" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md">{{ t.copyTextButton }}</button>
+        <button @click="showEmailModal = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">{{ t.closeButton }}</button>
       </div>
-      <div class="mt-6 flex justify-end"><button @click="showUserManagement = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">{{ t.closeButton }}</button></div>
     </div>
   </div>
 
@@ -671,7 +650,7 @@
   import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-storage.js";
   
   // Vue 3
-  import { createApp } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
+  import { createApp } from "https://unpkg.com/vue@3.4.21/dist/vue.esm-browser.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyBR7PVIb3QaN6aI1VjJ27lIUhZm8c5R6_o",
@@ -700,7 +679,7 @@
   const appConfig = {
     data() {
       return {
-        version: '1.63',
+        version: '1.66',
         isAuthReady: false,
         user: { loggedIn: false, email: null, uid: null, isAdmin: false, technicianName: null },
         loginForm: { email: '', password: '', error: '' },
@@ -751,14 +730,13 @@
         showErrorSuggestions: false,
 
         qrCodePatterns: [],
-        qrFields: [
-            { key: 'fiche', label: 'Gerät-Code', placeholder: 'Teilstring für Gerät...' },
-            { key: 'date', label: 'Datum', placeholder: 'Teilstring für Datum...' },
-            { key: 'ipei', label: 'IPEI', placeholder: 'Teilstring für IPEI...' },
-            { key: 'pid', label: 'P-ID', placeholder: 'Teilstring für P-ID...' }
-        ],
-        currentPattern: { id: null, name: '', example: '', deviceName: '', parts: { fiche: '', date: '', ipei: '', pid: '' } },
-        qrPreview: {},
+        qrFields: {
+          fiche: { label: 'Gerät-Code', identifier: '1P' },
+          date: { label: 'Datum', identifier: '10D' },
+          ipei: { label: 'IPEI', identifier: '22S' },
+          pid: { label: 'P-ID', identifier: '34S' }
+        },
+        currentPattern: { id: null, name: '', deviceName: '', example: '', parts: { fiche: '', date: '', ipei: '', pid: '' } },
 
         selectedRepairs: [],
         bulkEdit: { technician: '', status: '' },
@@ -858,22 +836,6 @@
                 notifNowOffline: 'Sie sind jetzt offline. Änderungen werden lokal gespeichert.',
                 enterFullscreen: "Vollbildmodus",
                 exitFullscreen: "Vollbildmodus beenden",
-                qrManagementTitle: "So funktioniert's:",
-                qrManagementInfo: "Fügen Sie ein Beispiel eines echten Codes ein. Markieren Sie dann die Teile des Codes, die den jeweiligen Feldern entsprechen. Das System lernt daraus ein Muster für die zukünftige Erkennung.",
-                newPatternTitle: "Neues Code-Muster erstellen",
-                editPatternTitle: "Code-Muster bearbeiten",
-                patternNameLabel: "Name des Musters",
-                patternNamePlaceholder: "z.B. 'Lange Etikette V1'",
-                exampleQrLabel: "Beispiel-Code",
-                exampleQrPlaceholder: "Hier den kompletten Inhalt eines echten Codes einfügen...",
-                deviceNameLabel: "Vollständiger Gerätename (optional)",
-                deviceNamePlaceholder: "z.B. 'CH-7722 TIPTEL'",
-                previewTitle: "Vorschau der erkannten Daten:",
-                qrFields: { fiche: 'Gerät', date: 'Datum', ipei: 'IPEI', pid: 'P-ID', deviceName: 'Gerätename' },
-                savePatternButton: "Muster speichern",
-                cancelEditButton: "Bearbeitung abbrechen",
-                existingPatternsTitle: "Gespeicherte Muster",
-                noPatternsInfo: "Noch keine Muster erstellt.",
                 bulkEditSelected: "Einträge ausgewählt.",
                 bulkEditAssignTechnician: "Techniker zuweisen:",
                 bulkEditChangeStatus: "Status ändern:",
@@ -896,13 +858,6 @@
                 emailPlaceholder: "E-Mail-Adresse",
                 passwordPlaceholder: "Passwort",
                 loginError: "E-Mail oder Passwort ist falsch.",
-                attachments: "Dateianhänge",
-                uploadButton: "Dateien hochladen...",
-                noAttachments: "Keine Anhänge vorhanden.",
-                uploadProgressText: (name) => `Lade '${name}' hoch...`,
-                uploadSuccess: "Datei erfolgreich hochgeladen.",
-                uploadError: "Fehler beim Hochladen der Datei.",
-                deleteAttachmentConfirm: "Möchten Sie diesen Anhang wirklich löschen?",
                 knowledgeBase: "Wissensbasis",
                 solutionTitle: "Titel der Lösung",
                 solutionContent: "Inhalt / Anleitung",
@@ -913,6 +868,20 @@
                 saveSolution: "Lösung speichern",
                 solution: "Lösung",
                 noSolutionsFound: "Keine Lösungen gefunden.",
+                patternNameLabel: "Name des Musters",
+                patternNamePlaceholder: "z.B. 'Lange Etikette V1'",
+                exampleQrPlaceholder: "Hier den kompletten Inhalt eines echten QR-Codes einfügen...",
+                deviceNameLabel: "Gerätename (optional)",
+                deviceNamePlaceholder: "z.B. 'CH-7722 TIPTEL'",
+                previewTitle: "Automatisch erkannte Daten (kann korrigiert werden):",
+                savePatternButton: "Muster speichern",
+                cancelEditButton: "Bearbeitung abbrechen",
+                existingPatternsTitle: "Gespeicherte Muster",
+                noPatternsInfo: "Noch keine Muster erstellt.",
+                dataCorrection: "Datenbank-Korrektur",
+                confirmDataFix: "Möchten Sie alle 'Micro'-Fehler zu 'Micro rauschen' korrigieren? Dies kann nicht rückgängig gemacht werden.",
+                dataFixSuccess: "Datenkorrektur erfolgreich.",
+                dataFixError: "Fehler bei der Datenkorrektur.",
             },
             fr: { /* ... */ }
         }
@@ -1116,6 +1085,13 @@
           }
           this.showConfirmModal = true;
       },
+       confirmDataFix(type) {
+        if(type === 'microError') {
+            this.confirmMessage = this.t.confirmDataFix;
+            this.confirmAction = () => this.correctMicroError();
+        }
+        this.showConfirmModal = true;
+      },
       executeConfirm() { if (typeof this.confirmAction === 'function') this.confirmAction(); this.cancelConfirm(); },
       cancelConfirm() { this.showConfirmModal = false; this.confirmMessage = ''; this.confirmAction = null; },
       async addRepair(){
@@ -1178,6 +1154,10 @@
       processQRCode(text){
         const parsed = this.parseQRCodeData(text || '');
         if (parsed && Object.keys(parsed).length > 0) {
+            // Apply formatting
+            if(parsed.ipei) parsed.ipei = this.formatIpei(parsed.ipei);
+            if(parsed.pid) parsed.pid = this.formatPid(parsed.pid);
+
             Object.assign(this.newEntry, parsed);
             this.qrCodeInput = '';
             this.showNotification(this.t.notifQrSuccess, 'success');
@@ -1189,60 +1169,44 @@
        parseQRCodeData(text) {
         const cleanedText = String(text || '').replace(/[\x00-\x1F\x7F-\x9F]/g, "").trim();
         if (!cleanedText) return null;
+        
+        // Remove GS1 prefix and spaces
+        const dataString = cleanedText.replace(/^\[?\)>?\d{2}/, '').replace(/\s+/g, '');
 
-        const normalize = (str) => String(str || '').replace(/^\[?\)>?\d{2}/, '').replace(/\s+/g, '');
-        const scannedText = normalize(cleanedText);
+        const identifiers = {
+            '1P': 'fiche',
+            '10D': 'date',
+            '22S': 'ipei',
+            '34S': 'pid'
+        };
 
-        for (const pattern of this.qrCodePatterns) {
-            if (!pattern.example || !pattern.parts) continue;
-            
-            const exampleText = normalize(pattern.example);
+        let result = {};
+        let foundAny = false;
 
-            const sortedParts = Object.entries(pattern.parts)
-                .filter(([, value]) => value)
-                .map(([key, value]) => ({ key, value: normalize(value), index: exampleText.indexOf(normalize(value)) }))
-                .filter(part => part.index !== -1)
-                .sort((a, b) => a.index - b.index);
+        // Create a regex to find any of the identifiers
+        const allIds = Object.keys(identifiers).join('|');
+        const regex = new RegExp(`(${allIds})`, 'g');
+        const matches = [...dataString.matchAll(regex)];
+        
+        if(matches.length > 0){
+            foundAny = true;
+            matches.forEach((match, i) => {
+                const identifier = match[1];
+                const field = identifiers[identifier];
+                const startIndex = match.index + identifier.length;
+                const nextMatch = matches[i + 1];
+                const endIndex = nextMatch ? nextMatch.index : dataString.length;
+                const dataValue = dataString.substring(startIndex, endIndex);
 
-            if (sortedParts.length === 0) continue;
-            
-            let tempScannedText = scannedText;
-            const extractedData = {};
-            let allPartsFound = true;
-            let lastKnownIndexInExample = 0;
-
-            for (let i = 0; i < sortedParts.length; i++) {
-                const currentPart = sortedParts[i];
-                const nextPart = sortedParts[i + 1];
-                
-                const startDelimiter = exampleText.substring(lastKnownIndexInExample, currentPart.index);
-                const startIndexInScan = tempScannedText.indexOf(startDelimiter);
-
-                if (startIndexInScan === -1) { allPartsFound = false; break; }
-                
-                const searchStart = startIndexInScan + startDelimiter.length;
-                
-                const nextDelimiterStartInExample = currentPart.index + currentPart.value.length;
-                const endDelimiter = nextPart ? exampleText.substring(nextDelimiterStartInExample, nextPart.index) : null;
-                
-                let endIndexInScan = tempScannedText.length;
-                if(endDelimiter) {
-                    endIndexInScan = tempScannedText.indexOf(endDelimiter, searchStart);
+                if (field === 'fiche' && this.deviceModels[dataValue]) {
+                    result[field] = this.deviceModels[dataValue];
+                } else {
+                    result[field] = dataValue;
                 }
-                
-                if (endIndexInScan === -1) { allPartsFound = false; break; }
-
-                extractedData[currentPart.key] = tempScannedText.substring(searchStart, endIndexInScan);
-                tempScannedText = tempScannedText.substring(endIndexInScan);
-                lastKnownIndexInExample = nextDelimiterStartInExample;
-            }
-
-            if (allPartsFound && Object.keys(extractedData).length > 0) {
-                 if (pattern.deviceName) extractedData.fiche = pattern.deviceName;
-                 return extractedData;
-            }
+            });
         }
-        return null;
+        
+        return foundAny ? result : null;
       },
        async checkIpeiHistory(ipeiValue, currentIdToExclude = null) {
         if (!ipeiValue) {
@@ -1274,6 +1238,20 @@
           this.currentView = 'repairs';
           if(fromModal) this.showEditModal = false;
       },
+      formatIpei(ipei) {
+        const cleaned = String(ipei).replace(/\s+/g, '');
+        if (cleaned.length === 13) {
+            return `${cleaned.substring(0,5)} ${cleaned.substring(5,12)} ${cleaned.substring(12)}`;
+        }
+        return ipei;
+      },
+      formatPid(pid) {
+        const cleaned = String(pid).replace(/\s+/g, '');
+        if (cleaned.length === 16) {
+            return cleaned.match(/.{1,4}/g).join(' ');
+        }
+        return pid;
+      },
       async addHouse(){
         if(this.newHouseName && !this.houses.includes(this.newHouseName)){
           try {
@@ -1304,24 +1282,21 @@
         }
       },
       async deleteCommonError(errorName){ await setDoc(doc(db,'config','commonErrors'), { list: this.commonErrors.filter(x=>x!==errorName) }); },
-      resetPatternForm() { this.currentPattern = { id: null, name: '', example: '', deviceName: '', parts: { fiche: '', date: '', ipei: '', pid: '' } }; this.qrPreview = {}; },
-      editPattern(pattern) { this.currentPattern = JSON.parse(JSON.stringify(pattern)); this.updatePreview(); },
-      updatePreview() { const parsed = this.parseQRCodeData(this.currentPattern.example); this.qrPreview = parsed ? parsed : {}; },
-      async savePattern() {
-          let patterns = [...this.qrCodePatterns];
-          if (this.currentPattern.id) {
-              const index = patterns.findIndex(p => p.id === this.currentPattern.id);
-              if (index !== -1) patterns[index] = this.currentPattern;
-          } else patterns.push({ ...this.currentPattern, id: Date.now().toString() });
-          await setDoc(doc(db, 'config', 'qrCodePatterns'), { patterns: patterns });
-          this.resetPatternForm();
-          this.showNotification('Muster gespeichert', 'success');
+      
+       async addDeviceModel() {
+        if (this.newDeviceModel.code && this.newDeviceModel.name) {
+          const updatedModels = { ...this.deviceModels, [this.newDeviceModel.code]: this.newDeviceModel.name };
+          await setDoc(doc(db, 'config', 'deviceModels'), { models: updatedModels });
+          this.newDeviceModel.code = ''; this.newDeviceModel.name = '';
+        }
       },
-      async deletePattern(patternId) {
-          const updatedPatterns = this.qrCodePatterns.filter(p => p.id !== patternId);
-          await setDoc(doc(db, 'config', 'qrCodePatterns'), { patterns: updatedPatterns });
-          this.showNotification('Muster gelöscht', 'info');
+      async deleteDeviceModel(item) {
+        const codeToDelete = item.code;
+        const updatedModels = { ...this.deviceModels };
+        delete updatedModels[codeToDelete];
+        await setDoc(doc(db, 'config', 'deviceModels'), { models: updatedModels });
       },
+
       addComment() {
           if (!this.newCommentText.trim()) { this.showNotification(this.t.notifCommentEmpty, 'error'); return; }
           if (!this.currentEdit.comments) this.currentEdit.comments = [];
@@ -1670,18 +1645,38 @@
       window.addEventListener('offline', () => this.isOnline = false);
       document.addEventListener('fullscreenchange', this.handleFullscreenChange);
 
-      // --- Test-Modus ohne Login ---
-      this.user = { loggedIn: true, email: 'test@user.com', uid: 'test-uid', isAdmin: true, technicianName: 'Test Techniker' };
-      this.listenToRepairs();
-      this.listenToConfig('houses', 'houses', 'list');
-      this.listenToConfig('technicians', 'technikerList', 'list');
-      if (this.user.isAdmin) {
-        onSnapshot(collection(db,'users'), s => { this.userList = s.docs.map(d => ({ id:d.id, ...d.data() })); });
-        this.listenToConfig('qrCodePatterns', 'qrCodePatterns', 'patterns');
-        this.listenToConfig('commonErrors', 'commonErrors', 'list');
-        this.listenToConfig('knowledgeBase', 'knowledgeBase', 'solutions');
-      }
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const authCheck = new Promise(resolve => {
+        onAuthStateChanged(auth, async (u)=>{
+          if(u){
+            this.user = { loggedIn:true, email:u.email, uid:u.uid, isAdmin:false, technicianName: null };
+            const userDocQuery = query(collection(db,'users'), where('email','==',u.email));
+            const userDocSnap = await getDocs(userDocQuery);
+
+            if(!userDocSnap.empty){
+                const userData = userDocSnap.docs[0].data();
+                this.user.isAdmin = userData.isAdmin || false;
+                this.user.technicianName = userData.technicianName || null;
+            }
+            
+            this.listenToRepairs();
+            this.listenToConfig('houses', 'houses', 'list');
+            this.listenToConfig('technicians', 'technikerList', 'list');
+            if(this.user.isAdmin) {
+                onSnapshot(collection(db,'users'), s => { this.userList = s.docs.map(d => ({ id:d.id, ...d.data() })); });
+                this.listenToConfig('qrCodePatterns', 'qrCodePatterns', 'patterns');
+                this.listenToConfig('commonErrors', 'commonErrors', 'list');
+                this.listenToConfig('knowledgeBase', 'knowledgeBase', 'solutions');
+            }
+          } else {
+            this.user = { loggedIn:false, email:null, uid:null, isAdmin:false, technicianName: null };
+            this.repairs = []; this.userList = []; this.houses = []; this.technikerList = [];
+          }
+          resolve();
+        });
+      });
+
+      const minDelay = new Promise(resolve => setTimeout(resolve, 1500));
+      await Promise.all([authCheck, minDelay]);
       this.isAuthReady = true;
     }
   };
