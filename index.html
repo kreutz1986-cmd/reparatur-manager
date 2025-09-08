@@ -12,6 +12,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- NEU: Bibliothek für QR-Code Scanner -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
       body { font-family: 'Inter', sans-serif; }
       [v-cloak] { display: none; }
@@ -42,6 +44,9 @@
       th.active .sort-icon { opacity: 1; }
       .system-comment { font-style: italic; color: #4b5563; }
       td mark { background-color: #fef08a; padding: 1px; border-radius: 2px; }
+      
+      /* NEU: Styling für den Kamera-Scanner-Bereich */
+      #qr-reader { border: 2px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -156,7 +161,7 @@
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700">{{ t.ipeiLabel }}</label>
-             <div class="relative mt-1">
+              <div class="relative mt-1">
                 <input v-model.trim="newEntry.ipei" type="text" class="block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm pr-20">
                 <div class="absolute inset-y-0 right-0 flex items-center pr-3">
                     <div v-if="isCheckingIpei" class="spinner h-5 w-5 border-2"></div>
@@ -176,7 +181,7 @@
             <datalist id="common-errors">
                 <option v-for="error in commonErrors" :key="error" :value="error"></option>
             </datalist>
-             <div v-if="errorSuggestions.length > 0 && showErrorSuggestions" class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+              <div v-if="errorSuggestions.length > 0 && showErrorSuggestions" class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
                 <ul class="max-h-40 overflow-auto">
                     <li v-for="solution in errorSuggestions" :key="solution.id" @click="showSolution(solution)" class="px-3 py-2 cursor-pointer hover:bg-gray-100 text-sm">
                         {{ solution.title }}
@@ -199,7 +204,12 @@
           <div class="md:col-span-2">
             <label class="block text-sm font-medium text-gray-700">{{ t.qrCodeLabel }}</label>
             <div class="mt-1 flex rounded-md shadow-sm">
-              <input v-model="qrCodeInput" @keydown="handleQrKeyDown" type="text" class="flex-1 block w-full rounded-md py-2 px-3 border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" :placeholder="t.scanPlaceholder">
+              <input v-model="qrCodeInput" @keydown="handleQrKeyDown" type="text" class="flex-1 block w-full rounded-l-md py-2 px-3 border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" :placeholder="t.scanPlaceholder">
+              <!-- GEÄNDERT: Button zum Starten des Kamera-Scanners -->
+              <button @click="startScanner" type="button" class="relative -ml-px inline-flex items-center space-x-2 rounded-r-md border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
+                <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M4 4h4L10 2H6a2 2 0 00-2 2v4l-2-2zM4 20h4l-2-2H4v-4l-2 2v4a2 2 0 002 2zM20 4h-4l2-2h4a2 2 0 012 2v4l-2-2zM20 20h-4l2 2h4a2 2 0 002-2v-4l-2 2zM15 9a3 3 0 11-6 0 3 3 0 016 0zM12 5c-3.87 0-7 3.13-7 7s3.13 7 7 7 7-3.13 7-7-3.13-7-7-7zm0 12a5 5 0 110-10 5 5 0 010 10z"></path></svg>
+                <span>Scan</span>
+              </button>
             </div>
           </div>
           <div class="col-span-1 md:col-span-2 lg:col-span-4 flex items-end">
@@ -225,7 +235,7 @@
                 <option value="">{{ t.all }}</option><option v-for="tech in technikerList" :key="tech" :value="tech">{{ tech }}</option>
               </select>
             </div>
-             <div>
+              <div>
               <label class="text-sm font-medium text-gray-700">{{ t.statusFilterLabel }}</label>
               <select v-model="filter.status" class="mt-1 inline-block py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                 <option value="">{{ t.all }}</option>
@@ -334,15 +344,15 @@
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div class="bg-white p-6 rounded-lg shadow-md">
                 <h3 class="text-lg font-semibold mb-4">{{ t.statusDistribution }}</h3>
-                 <div class="relative h-64 md:h-80"><canvas id="statusChart"></canvas></div>
+                <div class="relative h-64 md:h-80"><canvas id="statusChart"></canvas></div>
             </div>
              <div class="bg-white p-6 rounded-lg shadow-md">
                 <h3 class="text-lg font-semibold mb-4">{{ t.mostCommonErrors }}</h3>
-                 <div class="relative h-64 md:h-80"><canvas id="errorsChart"></canvas></div>
+                <div class="relative h-64 md:h-80"><canvas id="errorsChart"></canvas></div>
             </div>
              <div class="bg-white p-6 rounded-lg shadow-md lg:col-span-2">
                 <h3 class="text-lg font-semibold mb-4">{{ t.casesPerHouse }}</h3>
-                 <div class="relative h-96"><canvas id="housesChart"></canvas></div>
+                <div class="relative h-96"><canvas id="housesChart"></canvas></div>
             </div>
         </div>
     </div>
@@ -365,7 +375,7 @@
                 <input v-model.trim="currentEdit.ipei" type="text" class="block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm pr-20">
                 <div class="absolute inset-y-0 right-0 flex items-center pr-3">
                     <div v-if="isCheckingIpei" class="spinner h-5 w-5 border-2"></div>
-                     <a href="#" v-else-if="ipeiHistoryCount > 0" @click.prevent="showIpeiHistory(currentEdit.ipei, true)" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 hover:bg-red-200" :title="t.ipeiHistoryTooltip(ipeiHistoryCount)">
+                       <a href="#" v-else-if="ipeiHistoryCount > 0" @click.prevent="showIpeiHistory(currentEdit.ipei, true)" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 hover:bg-red-200" :title="t.ipeiHistoryTooltip(ipeiHistoryCount)">
                         {{ ipeiHistoryCount }}x {{ t.ipeiHistoryFound }}
                     </a>
                 </div>
@@ -375,7 +385,7 @@
         <div class="relative">
             <label class="block text-sm font-medium text-gray-700">{{ t.errorLabel }}</label>
             <input v-model="currentEdit.error" type="text" list="common-errors" @focus="showErrorSuggestions = true" @blur="hideErrorSuggestions" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-             <div v-if="errorSuggestions.length > 0 && showErrorSuggestions" class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+              <div v-if="errorSuggestions.length > 0 && showErrorSuggestions" class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
                 <ul class="max-h-40 overflow-auto">
                     <li v-for="solution in errorSuggestions" :key="solution.id" @click="showSolution(solution)" class="px-3 py-2 cursor-pointer hover:bg-gray-100 text-sm">
                         {{ solution.title }}
@@ -454,14 +464,14 @@
     <div class="modal-content">
       <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">{{ t.manageUsers }}</h3>
       
-       <div class="mb-6 p-4 border rounded-md">
+        <div class="mb-6 p-4 border rounded-md">
         <h4 class="font-semibold mb-2">{{ newUser.id ? 'Benutzer bearbeiten' : 'Neuen Benutzer hinzufügen' }}</h4>
         <form @submit.prevent="saveUserRole">
           <input v-model="newUser.email" type="email" placeholder="E-Mail des Benutzers" required class="block w-full mb-2 p-2 border rounded">
           <input v-model="newUser.technicianName" type="text" placeholder="Technikername (optional, muss exakt übereinstimmen)" class="block w-full mb-2 p-2 border rounded">
           <div class="flex items-center mb-2"><input v-model="newUser.isAdmin" type="checkbox" id="isAdmin" class="h-4 w-4 text-indigo-600 border-gray-300 rounded"><label for="isAdmin" class="ml-2 block text-sm text-gray-900">Ist Administrator?</label></div>
           <button type="submit" class="bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700">Speichern</button>
-           <button v-if="newUser.id" @click="resetUserForm" type="button" class="ml-2 bg-gray-200 text-gray-800 py-2 px-4 rounded hover:bg-gray-300">Abbrechen</button>
+            <button v-if="newUser.id" @click="resetUserForm" type="button" class="ml-2 bg-gray-200 text-gray-800 py-2 px-4 rounded hover:bg-gray-300">Abbrechen</button>
         </form>
       </div>
 
@@ -617,6 +627,16 @@
     </div>
   </div>
 
+  <!-- NEU: Modal für den Kamera-Scanner -->
+  <div v-if="isScannerActive" class="modal-backdrop" @click.self="stopScanner">
+    <div class="modal-content max-w-lg w-full">
+      <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">QR-Code scannen</h3>
+      <div id="qr-reader" class="w-full"></div>
+      <div class="mt-4 flex justify-end">
+        <button @click="stopScanner" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">{{ t.closeButton }}</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Toast Notifications Container -->
   <div class="toast-container">
@@ -679,7 +699,7 @@
   const appConfig = {
     data() {
       return {
-        version: '1.66',
+        version: '1.75',
         isAuthReady: false,
         user: { loggedIn: false, email: null, uid: null, isAdmin: false, technicianName: null },
         loginForm: { email: '', password: '', error: '' },
@@ -747,6 +767,10 @@
         confirmAction: null,
 
         notifications: [],
+        
+        // NEU: Status für den Kamera-Scanner
+        isScannerActive: false,
+        html5QrCode: null,
         
         // Dashboard
         allRepairsForStats: [],
@@ -1085,7 +1109,7 @@
           }
           this.showConfirmModal = true;
       },
-       confirmDataFix(type) {
+      confirmDataFix(type) {
         if(type === 'microError') {
             this.confirmMessage = this.t.confirmDataFix;
             this.confirmAction = () => this.correctMicroError();
@@ -1094,6 +1118,45 @@
       },
       executeConfirm() { if (typeof this.confirmAction === 'function') this.confirmAction(); this.cancelConfirm(); },
       cancelConfirm() { this.showConfirmModal = false; this.confirmMessage = ''; this.confirmAction = null; },
+      
+      // NEUE Methoden für den Kamera-Scanner
+      onScanSuccess(decodedText, decodedResult) {
+        this.processQRCode(decodedText);
+        this.stopScanner();
+      },
+      onScanFailure(error) {
+        // Wird bei jedem nicht erfolgreichen Frame aufgerufen, meist ignoriert.
+        // console.warn(`Code scan error = ${error}`);
+      },
+      startScanner() {
+        this.isScannerActive = true;
+        this.$nextTick(() => {
+          this.html5QrCode = new Html5Qrcode("qr-reader");
+          const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+          this.html5QrCode.start({ facingMode: "environment" }, config, this.onScanSuccess, this.onScanFailure)
+            .catch(err => {
+              console.error("Kann Rückkamera nicht starten, versuche Frontkamera:", err);
+              this.html5QrCode.start({ facingMode: "user" }, config, this.onScanSuccess, this.onScanFailure)
+                 .catch(errUser => {
+                     this.showNotification("Kamera kann nicht gestartet werden.", "error");
+                     this.stopScanner();
+                 });
+            });
+        });
+      },
+      stopScanner() {
+        if (this.html5QrCode && this.isScannerActive) {
+          this.html5QrCode.stop().catch(err => {
+            console.error("Fehler beim Stoppen des Scanners:", err);
+          }).finally(() => {
+            this.isScannerActive = false;
+            this.html5QrCode = null;
+          });
+        } else {
+            this.isScannerActive = false;
+        }
+      },
+      
       async addRepair(){
         if (this.houses.length === 0) { this.showNotification(this.t.notifHousesLoading, 'error'); return; }
         if(!this.newEntry.house || !this.newEntry.fiche){ this.showNotification(this.t.notifFillHouseAndDevice, 'error'); return; }
@@ -1166,49 +1229,42 @@
             this.showNotification(this.t.notifQrError, 'error');
         }
       },
-       parseQRCodeData(text) {
+      parseQRCodeData(text) {
         const cleanedText = String(text || '').replace(/[\x00-\x1F\x7F-\x9F]/g, "").trim();
         if (!cleanedText) return null;
         
-        // Remove GS1 prefix and spaces
-        const dataString = cleanedText.replace(/^\[?\)>?\d{2}/, '').replace(/\s+/g, '');
+        // Versuche, das passende Muster zu finden
+        for (const pattern of this.qrCodePatterns) {
+            // Erstelle eine dynamische Regex aus dem Muster-Beispiel
+            let regexString = '^' + pattern.example.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const placeholderRegex = /\{\{([^}]+)\}\}/g;
+            
+            // Finde alle Platzhalter im Beispiel
+            const placeholders = [...pattern.example.matchAll(placeholderRegex)].map(m => m[1]);
+            if (placeholders.length === 0) continue;
 
-        const identifiers = {
-            '1P': 'fiche',
-            '10D': 'date',
-            '22S': 'ipei',
-            '34S': 'pid'
-        };
-
-        let result = {};
-        let foundAny = false;
-
-        // Create a regex to find any of the identifiers
-        const allIds = Object.keys(identifiers).join('|');
-        const regex = new RegExp(`(${allIds})`, 'g');
-        const matches = [...dataString.matchAll(regex)];
-        
-        if(matches.length > 0){
-            foundAny = true;
-            matches.forEach((match, i) => {
-                const identifier = match[1];
-                const field = identifiers[identifier];
-                const startIndex = match.index + identifier.length;
-                const nextMatch = matches[i + 1];
-                const endIndex = nextMatch ? nextMatch.index : dataString.length;
-                const dataValue = dataString.substring(startIndex, endIndex);
-
-                if (field === 'fiche' && this.deviceModels[dataValue]) {
-                    result[field] = this.deviceModels[dataValue];
-                } else {
-                    result[field] = dataValue;
-                }
+            // Ersetze Platzhalter im Regex-String
+            placeholders.forEach(ph => {
+                regexString = regexString.replace(`{{${ph}}}`, '(.+)');
             });
+            
+            const regex = new RegExp(regexString);
+            const match = cleanedText.match(regex);
+
+            if (match) {
+                let result = { fiche: pattern.deviceName || '' };
+                placeholders.forEach((ph, index) => {
+                    const key = ph.toLowerCase();
+                    if (this.qrFields[key]) {
+                        result[key] = match[index + 1];
+                    }
+                });
+                return result;
+            }
         }
-        
-        return foundAny ? result : null;
+        return null; // Kein Muster hat gepasst
       },
-       async checkIpeiHistory(ipeiValue, currentIdToExclude = null) {
+      async checkIpeiHistory(ipeiValue, currentIdToExclude = null) {
         if (!ipeiValue) {
           this.isCheckingIpei = false;
           return;
@@ -1283,20 +1339,6 @@
       },
       async deleteCommonError(errorName){ await setDoc(doc(db,'config','commonErrors'), { list: this.commonErrors.filter(x=>x!==errorName) }); },
       
-       async addDeviceModel() {
-        if (this.newDeviceModel.code && this.newDeviceModel.name) {
-          const updatedModels = { ...this.deviceModels, [this.newDeviceModel.code]: this.newDeviceModel.name };
-          await setDoc(doc(db, 'config', 'deviceModels'), { models: updatedModels });
-          this.newDeviceModel.code = ''; this.newDeviceModel.name = '';
-        }
-      },
-      async deleteDeviceModel(item) {
-        const codeToDelete = item.code;
-        const updatedModels = { ...this.deviceModels };
-        delete updatedModels[codeToDelete];
-        await setDoc(doc(db, 'config', 'deviceModels'), { models: updatedModels });
-      },
-
       addComment() {
           if (!this.newCommentText.trim()) { this.showNotification(this.t.notifCommentEmpty, 'error'); return; }
           if (!this.currentEdit.comments) this.currentEdit.comments = [];
@@ -1555,8 +1597,8 @@
         // Houses Chart
         const housesCtx = document.getElementById('housesChart')?.getContext('2d');
         if (housesCtx) {
-             const repairsByHouse = this.repairsByHouse;
-             this.charts.houses = new Chart(housesCtx, {
+              const repairsByHouse = this.repairsByHouse;
+              this.charts.houses = new Chart(housesCtx, {
                 type: 'bar',
                 data: {
                     labels: Object.keys(repairsByHouse),
@@ -1661,11 +1703,18 @@
             this.listenToRepairs();
             this.listenToConfig('houses', 'houses', 'list');
             this.listenToConfig('technicians', 'technikerList', 'list');
+            
+            // Lade Wissensdatenbank und QR-Muster für alle, da sie für das Scannen benötigt werden
+            onSnapshot(collection(db, 'knowledgeBase'), (s) => {
+              this.knowledgeBase = s.docs.map(d => ({ id: d.id, ...d.data() }));
+            });
+            onSnapshot(query(collection(db, 'qrCodePatterns')), (s) => {
+              this.qrCodePatterns = s.docs.map(d => ({ id: d.id, ...d.data() }));
+            });
+
             if(this.user.isAdmin) {
                 onSnapshot(collection(db,'users'), s => { this.userList = s.docs.map(d => ({ id:d.id, ...d.data() })); });
-                this.listenToConfig('qrCodePatterns', 'qrCodePatterns', 'patterns');
                 this.listenToConfig('commonErrors', 'commonErrors', 'list');
-                this.listenToConfig('knowledgeBase', 'knowledgeBase', 'solutions');
             }
           } else {
             this.user = { loggedIn:false, email:null, uid:null, isAdmin:false, technicianName: null };
@@ -1688,4 +1737,3 @@
 </script>
 </body>
 </html>
-
