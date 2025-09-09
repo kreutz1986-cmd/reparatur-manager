@@ -1,10 +1,10 @@
-<!-- VERSION FÜR LIVE-BETRIEB -->
+<!-- VERSION FÜR TESTBETRIEB - OHNE LOGIN -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Reparatur Manager Online v1.86</title>
+  <title>Reparatur Manager Online v1.88 (TEST)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     // Tailwind Dark Mode Config
@@ -83,21 +83,6 @@
     <p class="loading-text">SYSTEM WIRD GESTARTET...</p>
   </div>
   
-  <!-- Login -->
-  <div v-if="isAuthReady && !user.loggedIn" class="min-h-screen flex items-center justify-center bg-gray-50 py-8 px-4 dark:bg-gray-900">
-    <div class="max-w-md w-full space-y-8">
-      <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-gray-100">{{ t.mainTitle }}</h2>
-      <form class="mt-8 space-y-6" @submit.prevent="login">
-        <div class="rounded-md shadow-sm -space-y-px">
-          <input v-model="loginForm.email" type="email" required class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" :placeholder="t.emailPlaceholder">
-          <input v-model="loginForm.password" type="password" required class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" :placeholder="t.passwordPlaceholder">
-        </div>
-        <p v-if="loginForm.error" class="text-red-500 text-sm">{{ loginForm.error }}</p>
-        <button type="submit" class="w-full py-2 px-4 text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">{{ t.loginButton }}</button>
-      </form>
-    </div>
-  </div>
-
   <!-- Main App -->
   <div v-if="isAuthReady && user.loggedIn" class="p-4 md:p-8">
     <!-- NEU: Offline-Banner -->
@@ -112,7 +97,6 @@
           <button @click="currentView = 'repairs'" :class="{'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200': currentView === 'repairs', 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800': currentView !== 'repairs'}" class="px-3 py-2 rounded-md text-sm font-medium">{{ t.repairs }}</button>
           <button v-if="user.technicianName" @click="currentView = 'my_repairs'" :class="{'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200': currentView === 'my_repairs', 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800': currentView !== 'my_repairs'}" class="px-3 py-2 rounded-md text-sm font-medium">{{ t.myRepairs }}</button>
           <button @click="currentView = 'dashboard'" :class="{'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200': currentView === 'dashboard', 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800': currentView !== 'dashboard'}" class="px-3 py-2 rounded-md text-sm font-medium">{{ t.dashboard }}</button>
-          <button @click="currentView = 'archive'" :class="{'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200': currentView === 'archive', 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800': currentView !== 'archive'}" class="px-3 py-2 rounded-md text-sm font-medium">{{ t.archive }}</button>
         </nav>
       </div>
       <div class="flex items-center mt-4 sm:mt-0 space-x-4">
@@ -147,14 +131,14 @@
           {{ t.loggedInAs }}: {{ user.email }}
           <span v-if="user.isAdmin" class="font-semibold text-indigo-600 dark:text-indigo-400">(Admin)</span>
         </span>
-        <button @click="logout" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-md text-sm">{{ t.logoutButton }}</button>
+        <!-- Logout removed for test version -->
       </div>
     </header>
 
-    <!-- Reparaturen, Meine Reparaturen & Archiv View -->
-    <div v-if="currentView === 'repairs' || currentView === 'my_repairs' || currentView === 'archive'">
-      <!-- New Entry (nur für aktive Reparaturen) -->
-      <div v-if="currentView !== 'archive'" class="bg-white p-6 rounded-lg shadow-md mb-8 dark:bg-gray-800">
+    <!-- Reparaturen & Meine Reparaturen View -->
+    <div v-if="currentView === 'repairs' || currentView === 'my_repairs'">
+      <!-- New Entry -->
+      <div class="bg-white p-6 rounded-lg shadow-md mb-8 dark:bg-gray-800">
         <h2 class="text-xl font-semibold mb-4 border-b pb-2 dark:border-gray-700">{{ t.newRepairEntry }}</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
@@ -221,9 +205,9 @@
               <option value="">{{ t.noOne }}</option><option v-for="techniker in technikerList" :key="techniker" :value="techniker">{{ techniker }}</option>
             </select>
           </div>
-          <div class="md:col-span-2">
+          <div class="lg:col-span-2">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.qrCodeLabel }}</label>
-            <div class="mt-1 flex rounded-md shadow-sm">
+            <div class="mt-1 flex flex-nowrap rounded-md shadow-sm">
               <input v-model="qrCodeInput" @keydown="handleQrKeyDown" type="text" class="flex-1 block w-full rounded-l-md py-2 px-3 border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white" :placeholder="t.scanPlaceholder">
               <button @click="startScanner" type="button" class="relative -ml-px inline-flex items-center space-x-2 rounded-r-md border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-300 dark:hover:bg-gray-500">
                 <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M4 4h4L10 2H6a2 2 0 00-2 2v4l-2-2zM4 20h4l-2-2H4v-4l-2 2v4a2 2 0 002 2zM20 4h-4l2-2h4a2 2 0 012 2v4l-2-2zM20 20h-4l2 2h4a2 2 0 002-2v-4l-2 2zM15 9a3 3 0 11-6 0 3 3 0 016 0zM12 5c-3.87 0-7 3.13-7 7s3.13 7 7 7 7-3.13 7-7-3.13-7-7-7zm0 12a5 5 0 110-10 5 5 0 010 10z"></path></svg>
@@ -239,7 +223,6 @@
 
       <!-- Controls & Table -->
       <div class="bg-white p-6 rounded-lg shadow-md dark:bg-gray-800">
-        <h2 v-if="currentView === 'archive'" class="text-xl font-semibold mb-4 border-b pb-2 dark:border-gray-700">{{ t.archive }}</h2>
         <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
           <!-- Filter Sektion -->
           <div class="flex flex-wrap items-end gap-4">
@@ -273,7 +256,7 @@
         </div>
         
         <!-- Massenbearbeitung -->
-        <div v-if="selectedRepairs.length > 0 && currentView !== 'archive'" class="bg-indigo-50 border border-indigo-200 rounded-md p-4 mb-4 flex flex-wrap items-center gap-4 dark:bg-indigo-900/20 dark:border-indigo-500/30">
+        <div v-if="selectedRepairs.length > 0" class="bg-indigo-50 border border-indigo-200 rounded-md p-4 mb-4 flex flex-wrap items-center gap-4 dark:bg-indigo-900/20 dark:border-indigo-500/30">
             <p class="text-sm font-semibold text-indigo-800 dark:text-indigo-200">{{ selectedRepairs.length }} {{ t.bulkEditSelected }}</p>
             <div class="flex-grow flex flex-wrap items-end gap-x-4 gap-y-2">
                 <div class="flex-grow">
@@ -298,7 +281,7 @@
           <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead class="bg-gray-50 dark:bg-gray-700">
               <tr>
-                <th class="px-6 py-3"><input v-if="currentView !== 'archive'" type="checkbox" @change="toggleSelectAll" :checked="allSelected" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 dark:bg-gray-600 dark:border-gray-500"></th>
+                <th class="px-6 py-3"><input type="checkbox" @change="toggleSelectAll" :checked="allSelected" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 dark:bg-gray-600 dark:border-gray-500"></th>
                 <th v-for="(header, key) in tableHeaders" :key="key" @click="sortBy(key)" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider" :class="{ 'active': sortKey === key }">
                   <div class="flex items-center">
                     <span>{{ header }}</span>
@@ -314,7 +297,7 @@
             </thead>
             <tbody class="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
               <tr v-for="repair in sortedAndFilteredRepairs" :key="repair.id" :class="{ 'table-row-selected': selectedRepairs.includes(repair.id), 'table-row-urgent': isUrgent(repair) }">
-                <td class="px-6 py-4"><input v-if="currentView !== 'archive'" type="checkbox" v-model="selectedRepairs" :value="repair.id" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 dark:bg-gray-600 dark:border-gray-500"></td>
+                <td class="px-6 py-4"><input type="checkbox" v-model="selectedRepairs" :value="repair.id" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 dark:bg-gray-600 dark:border-gray-500"></td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm" v-html="highlight(repair.house)"></td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm" v-html="highlight(repair.captured_at)"></td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm" v-html="highlight(repair.fiche)"></td>
@@ -326,8 +309,7 @@
                 <td class="px-6 py-4 whitespace-nowrap text-sm" v-html="highlight(repair.techniker || '---')"></td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button @click="editRepair(repair)" class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 ml-4 inline-block align-middle">{{ t.editButton }}</button>
-                    <button v-if="currentView !== 'archive'" @click="confirmDelete('repair', repair)" class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 ml-4 inline-block align-middle">{{ t.deleteButton }}</button>
-                    <button v-if="currentView === 'archive'" @click="unarchiveRepair(repair.id)" class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 ml-4 inline-block align-middle">{{ t.restoreButton }}</button>
+                    <button @click="confirmDelete('repair', repair)" class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 ml-4 inline-block align-middle">{{ t.deleteButton }}</button>
                 </td>
               </tr>
             </tbody>
@@ -606,9 +588,18 @@
                         <input v-model="currentPattern.deviceName" type="text" :placeholder="t.deviceNamePlaceholder" class="mt-1 p-2 border rounded w-full dark:bg-gray-800 dark:border-gray-600">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.exampleQrLabel }}</label>
-                        <textarea v-model="currentPattern.example" rows="4" :placeholder="t.exampleQrPlaceholder" class="mt-1 p-2 border rounded w-full font-mono dark:bg-gray-800 dark:border-gray-600"></textarea>
-                         <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Ersetzen Sie variable Teile durch Platzhalter: <code>{{Fiche}}</code>, <code>{{Datum}}</code>, <code>{{Ipei}}</code>, <code>{{Pid}}</code></p>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">1. Vollständigen Beispiel-Code einfügen</label>
+                        <textarea v-model="currentPattern.rawExample" rows="3" placeholder="Hier den kompletten Code von einem echten Etikett einfügen..." class="mt-1 p-2 border rounded w-full font-mono dark:bg-gray-800 dark:border-gray-600"></textarea>
+                    </div>
+                    <div v-if="currentPattern.rawExample">
+                        <h5 class="font-semibold text-sm mb-2">2. Variable Teile aus dem Beispiel zuordnen</h5>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">Kopieren Sie den Teil aus dem obigen Beispiel, der der jeweiligen Information entspricht.</p>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div v-for="(field, key) in qrFields" :key="key">
+                                <label class="block text-xs font-medium text-gray-500 dark:text-gray-400">{{ field.label }}</label>
+                                <input v-model="currentPattern.parts[key]" type="text" class="mt-1 p-1 border rounded w-full font-mono text-xs dark:bg-gray-800 dark:border-gray-600">
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="mt-4 space-x-2">
@@ -746,7 +737,7 @@
   const appConfig = {
     data() {
       return {
-        version: '1.85',
+        version: '1.88',
         isAuthReady: false,
         user: { loggedIn: false, email: null, uid: null, isAdmin: false, technicianName: null },
         loginForm: { email: '', password: '', error: '' },
@@ -755,7 +746,6 @@
         showAdminMenu: false,
 
         repairs: [],
-        archivedRepairs: [],
         houses: [],
         technikerList: [],
         userList: [],
@@ -804,7 +794,7 @@
           ipei: { label: 'IPEI', identifier: '22S' },
           pid: { label: 'P-ID', identifier: '34S' }
         },
-        currentPattern: { id: null, name: '', deviceName: '', example: '', parts: {} },
+        currentPattern: { id: null, name: '', deviceName: '', rawExample: '', parts: { fiche: '', date: '', ipei: '', pid: '' } },
 
         selectedRepairs: [],
         bulkEdit: { technician: '', status: '' },
@@ -831,7 +821,7 @@
         lastArchiveCheck: null,
         translations: {
             de: {
-                mainTitle: "Reparatur Manager", repairs: "Reparaturen", myRepairs: "Meine Reparaturen", dashboard: "Dashboard", administration: "Verwaltung", archive: "Archiv",
+                mainTitle: "Reparatur Manager", repairs: "Reparaturen", myRepairs: "Meine Reparaturen", dashboard: "Dashboard", administration: "Verwaltung",
                 users: "Benutzer", technicians: "Techniker", manageHouses: "Häuser verwalten", manageErrors: "Fehler verwalten", manageKnowledgeBase: "Wissensbasis verwalten",
                 manageQrCodes: "Geräte & QR-Codes verwalten", loggedInAs: "Angemeldet als", newRepairEntry: "Neuer Reparatur-Eintrag", houseLabel: "Haus", capturedAtLabel: "Erfasst am",
                 dateLabel: "Datum", deviceLabel: "Gerät", engagementLabel: "Fiche d'engagement", ipeiLabel: "IPEI", pidLabel: "P-ID", errorLabel: "Fehler", statusLabel: "Status",
@@ -859,7 +849,8 @@
                 knowledgeBase: "Wissensbasis", solutionTitle: "Titel der Lösung", solutionContent: "Inhalt / Anleitung", relatedErrors: "Zugehörige Fehler (durch Komma getrennt)",
                 relatedErrorsPlaceholder: "z.B. E-102, Error 102, Rotes Licht", newSolution: "Neuer Lösungsartikel", editSolution: "Lösungsartikel bearbeiten", saveSolution: "Lösung speichern",
                 solution: "Lösung", noSolutionsFound: "Keine Lösungen gefunden.", patternNameLabel: "Name des Musters", patternNamePlaceholder: "z.B. 'Lange Etikette V1'",
-                exampleQrPlaceholder: "Hier den kompletten Inhalt eines echten QR-Codes einfügen...", deviceNameLabel: "Gerätename (optional)", deviceNamePlaceholder: "z.B. 'CH-7722 TIPTEL'",
+                exampleQrLabel: "Muster / Beispiel-Code",
+                exampleQrPlaceholder: "Hier den Code mit Platzhaltern einfügen...", deviceNameLabel: "Gerätename (optional)", deviceNamePlaceholder: "z.B. 'CH-7722 TIPTEL'",
                 previewTitle: "Automatisch erkannte Daten (kann korrigiert werden):", savePatternButton: "Muster speichern", cancelEditButton: "Bearbeitung abbrechen",
                 existingPatternsTitle: "Gespeicherte Muster", noPatternsInfo: "Noch keine Muster erstellt.",
                 newPatternTitle: "Neues QR-Muster erstellen", editPatternTitle: "QR-Muster bearbeiten", restoreButton: "Wiederherstellen",
@@ -914,15 +905,17 @@
       },
       currentView(newView, oldView) {
         this.selectedRepairs = [];
+        
+        if(oldView === 'dashboard'){
+            this.destroyCharts();
+        }
+
         if (newView === 'dashboard') {
             this.loadAllRepairsForStats().then(() => {
                 this.$nextTick(() => {
                     this.renderCharts();
                 });
             });
-        }
-        if(oldView === 'dashboard'){
-            this.destroyCharts();
         }
       },
       isOnline(newStatus) {
@@ -939,7 +932,7 @@
       t() { return this.translations.de; },
       tableHeaders() { return this.t.tableHeaders; },
       sortedAndFilteredRepairs() {
-        let sourceData = this.currentView === 'archive' ? this.archivedRepairs : this.repairs;
+        let sourceData = this.repairs;
 
         let filtered = sourceData;
         if (this.currentView === 'my_repairs' && this.user.technicianName) {
@@ -1188,7 +1181,6 @@
         if(!this.newEntry.house || !this.newEntry.fiche){ this.showNotification(this.t.notifFillHouseAndDevice, 'error'); return; }
         const lastSelectedHouse = this.newEntry.house;
         const dataToSave = JSON.parse(JSON.stringify(this.newEntry));
-        dataToSave.archived = false; // explicitly set not archived
         await addDoc(collection(db,'repairs'), { ...dataToSave, cost:0, createdAt: serverTimestamp() });
         Object.assign(this.newEntry, { captured_at:new Date().toISOString().slice(0,10), date:'', fiche:'', fiche_engagement:'', ipei:'', pid:'', error:'', status:'Offen', comments: [], techniker: '', attachments: [] });
         this.newEntry.house = lastSelectedHouse;
@@ -1508,17 +1500,15 @@
         doc.save(`reparatur_${repair.fiche || 'unbekannt'}_${repair.captured_at}.pdf`);
       },
       listenToRepairs() {
-          const q = query(collection(db, 'repairs'), where('archived', '==', false), orderBy('createdAt', 'desc'));
+          const q = query(collection(db, 'repairs'), orderBy('createdAt', 'desc'));
           onSnapshot(q, (snapshot) => { this.repairs = snapshot.docs.map(d => ({ id: d.id, ...d.data() })); },
-          (error) => { console.error("Fehler beim Laden der Reparaturen:", error); });
-      },
-      listenToArchivedRepairs() {
-          const q = query(collection(db, 'repairs'), where('archived', '==', true), orderBy('createdAt', 'desc'));
-          onSnapshot(q, (snapshot) => { this.archivedRepairs = snapshot.docs.map(d => ({ id: d.id, ...d.data() })); },
-          (error) => { console.error("Fehler beim Laden des Archivs:", error); });
+          (error) => {
+              console.error("Fehler beim Laden der Reparaturen:", error);
+              this.showNotification("DB-Fehler: Reparaturen konnten nicht geladen werden.", 'error', 10000);
+          });
       },
       async loadAllRepairsForStats() {
-          const q = query(collection(db, 'repairs'), where('archived', '==', false), orderBy('createdAt', 'desc'));
+          const q = query(collection(db, 'repairs'));
           const querySnapshot = await getDocs(q);
           this.allRepairsForStats = querySnapshot.docs.map(d => d.data());
       },
@@ -1590,6 +1580,7 @@
         this.destroyCharts();
         
         this.$nextTick(() => {
+            if (this.currentView !== 'dashboard') return;
             const chartOptions = {
                 plugins: { legend: { labels: { color: this.isDarkMode ? '#d1d5db' : '#374151' } } },
                 scales: { 
@@ -1720,60 +1711,48 @@
       deleteAttachment(index) {
           this.showNotification(`Löschen von Anhängen in Kürze verfügbar.`, 'info');
       },
-       updatePreviewFromExample() {
-        const text = this.currentPattern.example || '';
-        const cleanedText = String(text || '').replace(/[\x00-\x1F\x7F-\x9F]/g, "").trim();
-        if (!cleanedText) {
-            this.currentPattern.parts = {};
-            return;
-        }
-        
-        const dataString = cleanedText.replace(/^\[\)\>\s*\d{2}\s*/, '').replace(/\s+/g, '');
-        let result = { fiche: '', date: '', ipei: '', pid: '' };
-        
-        const identifiers = { '1P': 'fiche', '10D': 'date', '22S': 'ipei', '34S': 'pid' };
-        const allIds = Object.keys(identifiers).join('|');
-        const regex = new RegExp(`(${allIds})`, 'g');
-        const matches = [...dataString.matchAll(regex)];
-
-        if (matches.length > 0) {
-            matches.forEach((match, i) => {
-                const identifier = match[1];
-                const field = identifiers[identifier];
-                const startIndex = match.index + identifier.length;
-                const nextMatch = matches[i + 1];
-                const endIndex = nextMatch ? nextMatch.index : dataString.length;
-                let dataValue = dataString.substring(startIndex, endIndex);
-                result[field] = dataValue;
-            });
-            this.currentPattern.parts = result;
-        } else {
-            this.currentPattern.parts = {};
-        }
-    },
     resetPatternForm() {
-        this.currentPattern = { id: null, name: '', deviceName: '', example: '', parts: {} };
+        this.currentPattern = { id: null, name: '', deviceName: '', rawExample: '', parts: { fiche: '', date: '', ipei: '', pid: '' } };
     },
     editPattern(pattern) {
         this.currentPattern = JSON.parse(JSON.stringify(pattern));
         if (!this.currentPattern.parts) {
-            this.currentPattern.parts = {};
+             this.currentPattern.parts = { fiche: '', date: '', ipei: '', pid: '' };
         }
     },
     async savePattern() {
-        if (!this.currentPattern.name) {
-            this.showNotification('Mustername ist erforderlich.', 'error');
+        if (!this.currentPattern.name || !this.currentPattern.rawExample) {
+            this.showNotification('Mustername und Beispiel-Code sind erforderlich.', 'error');
             return;
         }
+
+        let finalExample = this.currentPattern.rawExample;
+        for (const key in this.currentPattern.parts) {
+            const value = this.currentPattern.parts[key];
+            if (value && finalExample.includes(value)) {
+                 const placeholder = `{{${this.capitalizeFirstLetter(key)}}}`;
+                 finalExample = finalExample.replace(value, placeholder);
+            }
+        }
         
+        const patternToSave = {
+            id: this.currentPattern.id,
+            name: this.currentPattern.name,
+            deviceName: this.currentPattern.deviceName,
+            rawExample: this.currentPattern.rawExample,
+            parts: this.currentPattern.parts,
+            example: finalExample
+        };
+
         const patterns = JSON.parse(JSON.stringify(this.qrCodePatterns));
-        if(this.currentPattern.id) {
-            const index = patterns.findIndex(p => p.id === this.currentPattern.id);
+        if(patternToSave.id) {
+            const index = patterns.findIndex(p => p.id === patternToSave.id);
             if(index !== -1) {
-                patterns[index] = this.currentPattern;
+                patterns[index] = patternToSave;
             }
         } else {
-            patterns.push({ ...this.currentPattern, id: Date.now().toString() });
+            patternToSave.id = Date.now().toString();
+            patterns.push(patternToSave);
         }
 
         try {
@@ -1795,50 +1774,6 @@
             this.showNotification('Fehler beim Löschen des Musters.', 'error');
         }
     },
-    async runArchiveCheck() {
-        const now = Date.now();
-        // Run check only once per hour to save reads
-        if (this.lastArchiveCheck && (now - this.lastArchiveCheck < 3600000)) {
-            return;
-        }
-        this.lastArchiveCheck = now;
-
-        const threeMonthsAgo = new Date();
-        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-
-        const q = query(collection(db, 'repairs'), 
-            where('archived', '==', false),
-            where('status', 'in', [this.t.statusCompleted, this.t.statusCompletedAtCustomer]),
-            where('completedAt', '<=', threeMonthsAgo)
-        );
-
-        const snapshot = await getDocs(q);
-        if (snapshot.empty) {
-            return; // Nothing to archive
-        }
-        
-        const batch = writeBatch(db);
-        snapshot.docs.forEach(d => {
-            const ref = doc(db, 'repairs', d.id);
-            batch.update(ref, { archived: true });
-        });
-
-        await batch.commit();
-        this.showNotification(this.t.notifArchived(snapshot.size), 'info');
-    },
-    async unarchiveRepair(repairId) {
-        const repairRef = doc(db, 'repairs', repairId);
-        try {
-            await updateDoc(repairRef, {
-                archived: false,
-                completedAt: deleteField() // Remove timestamp to prevent immediate re-archiving
-            });
-            this.showNotification(this.t.notifRestored, 'success');
-        } catch (error) {
-            console.error("Fehler beim Wiederherstellen: ", error);
-            this.showNotification("Fehler beim Wiederherstellen.", 'error');
-        }
-    }
     },
     async mounted(){
       window.addEventListener('online', () => this.isOnline = true);
@@ -1850,46 +1785,34 @@
           document.documentElement.classList.add('dark');
       }
 
-      const authCheck = new Promise(resolve => {
-        onAuthStateChanged(auth, async (u)=>{
-          if(u){
-            this.user = { loggedIn:true, email:u.email, uid:u.uid, isAdmin:false, technicianName: null };
-            const userDocQuery = query(collection(db,'users'), where('email','==',u.email));
-            const userDocSnap = await getDocs(userDocQuery);
+      // --- BYPASS LOGIN FOR TESTING ---
+      console.warn("--- TESTMODUS AKTIV: Login wird umgangen. ---");
 
-            if(!userDocSnap.empty){
-                const userData = userDocSnap.docs[0].data();
-                this.user.isAdmin = userData.isAdmin || false;
-                this.user.technicianName = userData.technicianName || null;
-            }
-            
-            this.listenToRepairs();
-            this.listenToArchivedRepairs();
-            this.listenToConfig('houses', 'houses', 'list');
-            this.listenToConfig('technicians', 'technikerList', 'list');
-            
-            onSnapshot(collection(db, 'knowledgeBase'), (s) => { this.knowledgeBase = s.docs.map(d => ({ id: d.id, ...d.data() })); });
-            onSnapshot(doc(db, 'config', 'qrCodePatterns'), (doc) => {
-                if (doc.exists() && doc.data().patterns) {
-                    this.qrCodePatterns = doc.data().patterns;
-                }
-            });
+      // Simulate a logged-in admin user
+      this.user = {
+          loggedIn: true,
+          email: 'test@user.com',
+          uid: 'test-user-id',
+          isAdmin: true, // Give admin rights for full testing
+          technicianName: 'Test Techniker' // Also simulate a technician name
+      };
 
-            if(this.user.isAdmin) {
-                onSnapshot(collection(db,'users'), s => { this.userList = s.docs.map(d => ({ id:d.id, ...d.data() })); });
-                this.listenToConfig('commonErrors', 'commonErrors', 'list');
-                this.runArchiveCheck();
-            }
-          } else {
-            this.user = { loggedIn:false, email:null, uid:null, isAdmin:false, technicianName: null };
-            this.repairs = []; this.userList = []; this.houses = []; this.technikerList = [];
+      // Load all necessary data directly
+      this.listenToRepairs();
+      this.listenToConfig('houses', 'houses', 'list');
+      this.listenToConfig('technicians', 'technikerList', 'list');
+      onSnapshot(collection(db, 'knowledgeBase'), (s) => { this.knowledgeBase = s.docs.map(d => ({ id: d.id, ...d.data() })); });
+      onSnapshot(doc(db, 'config', 'qrCodePatterns'), (doc) => {
+          if (doc.exists() && doc.data().patterns) {
+              this.qrCodePatterns = doc.data().patterns;
           }
-          resolve();
-        });
       });
-
+      onSnapshot(collection(db,'users'), s => { this.userList = s.docs.map(d => ({ id:d.id, ...d.data() })); });
+      this.listenToConfig('commonErrors', 'commonErrors', 'list');
+      
+      // Simulate the loading delay and set auth ready
       const minDelay = new Promise(resolve => setTimeout(resolve, 1500));
-      await Promise.all([authCheck, minDelay]);
+      await minDelay;
       this.isAuthReady = true;
     }
   };
