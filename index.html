@@ -4,8 +4,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Reparatur Manager Online v1.82</title>
+  <title>Reparatur Manager Online v1.84</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Tailwind Dark Mode Config
+    tailwind.config = {
+      darkMode: 'class',
+    }
+  </script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
   <!-- PDF & Chart Bibliotheken -->
@@ -106,6 +112,7 @@
           <button @click="currentView = 'repairs'" :class="{'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200': currentView === 'repairs', 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800': currentView !== 'repairs'}" class="px-3 py-2 rounded-md text-sm font-medium">{{ t.repairs }}</button>
           <button v-if="user.technicianName" @click="currentView = 'my_repairs'" :class="{'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200': currentView === 'my_repairs', 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800': currentView !== 'my_repairs'}" class="px-3 py-2 rounded-md text-sm font-medium">{{ t.myRepairs }}</button>
           <button @click="currentView = 'dashboard'" :class="{'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200': currentView === 'dashboard', 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800': currentView !== 'dashboard'}" class="px-3 py-2 rounded-md text-sm font-medium">{{ t.dashboard }}</button>
+          <button @click="currentView = 'archive'" :class="{'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200': currentView === 'archive', 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800': currentView !== 'archive'}" class="px-3 py-2 rounded-md text-sm font-medium">{{ t.archive }}</button>
         </nav>
       </div>
       <div class="flex items-center mt-4 sm:mt-0 space-x-4">
@@ -144,10 +151,10 @@
       </div>
     </header>
 
-    <!-- Reparaturen & Meine Reparaturen View -->
-    <div v-if="currentView === 'repairs' || currentView === 'my_repairs'">
-      <!-- New Entry -->
-      <div class="bg-white p-6 rounded-lg shadow-md mb-8 dark:bg-gray-800">
+    <!-- Reparaturen, Meine Reparaturen & Archiv View -->
+    <div v-if="currentView === 'repairs' || currentView === 'my_repairs' || currentView === 'archive'">
+      <!-- New Entry (nur für aktive Reparaturen) -->
+      <div v-if="currentView !== 'archive'" class="bg-white p-6 rounded-lg shadow-md mb-8 dark:bg-gray-800">
         <h2 class="text-xl font-semibold mb-4 border-b pb-2 dark:border-gray-700">{{ t.newRepairEntry }}</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
@@ -232,6 +239,7 @@
 
       <!-- Controls & Table -->
       <div class="bg-white p-6 rounded-lg shadow-md dark:bg-gray-800">
+        <h2 v-if="currentView === 'archive'" class="text-xl font-semibold mb-4 border-b pb-2 dark:border-gray-700">{{ t.archive }}</h2>
         <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
           <!-- Filter Sektion -->
           <div class="flex flex-wrap items-end gap-4">
@@ -265,7 +273,7 @@
         </div>
         
         <!-- Massenbearbeitung -->
-        <div v-if="selectedRepairs.length > 0" class="bg-indigo-50 border border-indigo-200 rounded-md p-4 mb-4 flex flex-wrap items-center gap-4 dark:bg-indigo-900/20 dark:border-indigo-500/30">
+        <div v-if="selectedRepairs.length > 0 && currentView !== 'archive'" class="bg-indigo-50 border border-indigo-200 rounded-md p-4 mb-4 flex flex-wrap items-center gap-4 dark:bg-indigo-900/20 dark:border-indigo-500/30">
             <p class="text-sm font-semibold text-indigo-800 dark:text-indigo-200">{{ selectedRepairs.length }} {{ t.bulkEditSelected }}</p>
             <div class="flex-grow flex flex-wrap items-end gap-x-4 gap-y-2">
                 <div class="flex-grow">
@@ -290,7 +298,7 @@
           <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead class="bg-gray-50 dark:bg-gray-700">
               <tr>
-                <th class="px-6 py-3"><input type="checkbox" @change="toggleSelectAll" :checked="allSelected" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 dark:bg-gray-600 dark:border-gray-500"></th>
+                <th class="px-6 py-3"><input v-if="currentView !== 'archive'" type="checkbox" @change="toggleSelectAll" :checked="allSelected" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 dark:bg-gray-600 dark:border-gray-500"></th>
                 <th v-for="(header, key) in tableHeaders" :key="key" @click="sortBy(key)" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider" :class="{ 'active': sortKey === key }">
                   <div class="flex items-center">
                     <span>{{ header }}</span>
@@ -306,7 +314,7 @@
             </thead>
             <tbody class="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
               <tr v-for="repair in sortedAndFilteredRepairs" :key="repair.id" :class="{ 'table-row-selected': selectedRepairs.includes(repair.id), 'table-row-urgent': isUrgent(repair) }">
-                <td class="px-6 py-4"><input type="checkbox" v-model="selectedRepairs" :value="repair.id" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 dark:bg-gray-600 dark:border-gray-500"></td>
+                <td class="px-6 py-4"><input v-if="currentView !== 'archive'" type="checkbox" v-model="selectedRepairs" :value="repair.id" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 dark:bg-gray-600 dark:border-gray-500"></td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm" v-html="highlight(repair.house)"></td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm" v-html="highlight(repair.captured_at)"></td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm" v-html="highlight(repair.fiche)"></td>
@@ -318,7 +326,8 @@
                 <td class="px-6 py-4 whitespace-nowrap text-sm" v-html="highlight(repair.techniker || '---')"></td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button @click="editRepair(repair)" class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 ml-4 inline-block align-middle">{{ t.editButton }}</button>
-                    <button @click="confirmDelete('repair', repair)" class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 ml-4 inline-block align-middle">{{ t.deleteButton }}</button>
+                    <button v-if="currentView !== 'archive'" @click="confirmDelete('repair', repair)" class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 ml-4 inline-block align-middle">{{ t.deleteButton }}</button>
+                    <button v-if="currentView === 'archive'" @click="unarchiveRepair(repair.id)" class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 ml-4 inline-block align-middle">{{ t.restoreButton }}</button>
                 </td>
               </tr>
             </tbody>
@@ -745,7 +754,7 @@
   const appConfig = {
     data() {
       return {
-        version: '1.82',
+        version: '1.84',
         isAuthReady: false,
         user: { loggedIn: false, email: null, uid: null, isAdmin: false, technicianName: null },
         loginForm: { email: '', password: '', error: '' },
@@ -754,6 +763,7 @@
         showAdminMenu: false,
 
         repairs: [],
+        archivedRepairs: [],
         houses: [],
         technikerList: [],
         userList: [],
@@ -802,7 +812,7 @@
           ipei: { label: 'IPEI', identifier: '22S' },
           pid: { label: 'P-ID', identifier: '34S' }
         },
-        currentPattern: { id: null, name: '', deviceName: '', example: '', parts: { fiche: '', date: '', ipei: '', pid: '' } },
+        currentPattern: { id: null, name: '', deviceName: '', example: '', parts: {} },
 
         selectedRepairs: [],
         bulkEdit: { technician: '', status: '' },
@@ -826,9 +836,10 @@
 
         isOnline: navigator.onLine,
         isFullscreen: false,
+        lastArchiveCheck: null,
         translations: {
             de: {
-                mainTitle: "Reparatur Manager", repairs: "Reparaturen", myRepairs: "Meine Reparaturen", dashboard: "Dashboard", administration: "Verwaltung",
+                mainTitle: "Reparatur Manager", repairs: "Reparaturen", myRepairs: "Meine Reparaturen", dashboard: "Dashboard", administration: "Verwaltung", archive: "Archiv",
                 users: "Benutzer", technicians: "Techniker", manageHouses: "Häuser verwalten", manageErrors: "Fehler verwalten", manageKnowledgeBase: "Wissensbasis verwalten",
                 manageQrCodes: "Geräte & QR-Codes verwalten", loggedInAs: "Angemeldet als", newRepairEntry: "Neuer Reparatur-Eintrag", houseLabel: "Haus", capturedAtLabel: "Erfasst am",
                 dateLabel: "Datum", deviceLabel: "Gerät", engagementLabel: "Fiche d'engagement", ipeiLabel: "IPEI", pidLabel: "P-ID", errorLabel: "Fehler", statusLabel: "Status",
@@ -859,6 +870,8 @@
                 exampleQrPlaceholder: "Hier den kompletten Inhalt eines echten QR-Codes einfügen...", deviceNameLabel: "Gerätename (optional)", deviceNamePlaceholder: "z.B. 'CH-7722 TIPTEL'",
                 previewTitle: "Automatisch erkannte Daten (kann korrigiert werden):", savePatternButton: "Muster speichern", cancelEditButton: "Bearbeitung abbrechen",
                 existingPatternsTitle: "Gespeicherte Muster", noPatternsInfo: "Noch keine Muster erstellt.",
+                newPatternTitle: "Neues QR-Muster erstellen", editPatternTitle: "QR-Muster bearbeiten", restoreButton: "Wiederherstellen",
+                notifArchived: (count) => `${count} alte Einträge wurden archiviert.`, notifRestored: "Eintrag wurde wiederhergestellt.",
             },
         }
       };
@@ -908,6 +921,7 @@
         this.searchSolutions(newValue);
       },
       currentView(newView, oldView) {
+        this.selectedRepairs = [];
         if (newView === 'dashboard') {
             this.loadAllRepairsForStats().then(() => {
                 this.$nextTick(() => {
@@ -933,7 +947,12 @@
       t() { return this.translations.de; },
       tableHeaders() { return this.t.tableHeaders; },
       sortedAndFilteredRepairs() {
-        let filtered = this.repairs;
+        let sourceData = this.repairs;
+        if(this.currentView === 'archive'){
+            sourceData = this.archivedRepairs;
+        }
+
+        let filtered = sourceData;
         if (this.currentView === 'my_repairs' && this.user.technicianName) {
             filtered = filtered.filter(r => r.techniker === this.user.technicianName);
         }
@@ -1211,8 +1230,14 @@
             this.currentEdit.comments.push({ text: changes.join(' '), user: this.user.email, timestamp: Date.now(), isSystem: true });
         }
 
-        const ref = doc(db,'repairs',this.currentEdit.id);
         const data = { ...JSON.parse(JSON.stringify(this.currentEdit)) }; 
+        // Add completedAt timestamp if status changes to a completed state
+        const completedStati = [this.t.statusCompleted, this.t.statusCompletedAtCustomer];
+        if (completedStati.includes(data.status) && !completedStati.includes(this.originalEdit.status)) {
+            data.completedAt = serverTimestamp();
+        }
+
+        const ref = doc(db,'repairs',data.id);
         delete data.id;
         await updateDoc(ref, data);
         this.showEditModal = false;
@@ -1401,7 +1426,13 @@
 
           const batch = writeBatch(db);
           const updates = {};
-          if (this.bulkEdit.status) updates.status = this.bulkEdit.status;
+          if (this.bulkEdit.status) {
+              updates.status = this.bulkEdit.status;
+              const completedStati = [this.t.statusCompleted, this.t.statusCompletedAtCustomer];
+              if (completedStati.includes(updates.status)) {
+                  updates.completedAt = serverTimestamp();
+              }
+          }
           if (this.bulkEdit.technician) updates.techniker = this.bulkEdit.technician === 'NONE' ? '' : this.bulkEdit.technician;
           
           this.selectedRepairs.forEach(id => {
@@ -1486,6 +1517,11 @@
           const q = query(collection(db, 'repairs'), orderBy('createdAt', 'desc'));
           onSnapshot(q, (snapshot) => { this.repairs = snapshot.docs.map(d => ({ id: d.id, ...d.data() })); },
           (error) => { console.error("Fehler beim Laden der Reparaturen:", error); });
+      },
+      listenToArchivedRepairs() {
+          const q = query(collection(db, 'archived_repairs'), orderBy('createdAt', 'desc'));
+          onSnapshot(q, (snapshot) => { this.archivedRepairs = snapshot.docs.map(d => ({ id: d.id, ...d.data() })); },
+          (error) => { console.error("Fehler beim Laden des Archivs:", error); });
       },
       async loadAllRepairsForStats() {
           const q = query(collection(db, 'repairs'), orderBy('createdAt', 'desc'));
@@ -1655,7 +1691,135 @@
       },
       deleteAttachment(index) {
           this.showNotification(`Löschen von Anhängen in Kürze verfügbar.`, 'info');
-      }
+      },
+       updatePreviewFromExample() {
+        const text = this.currentPattern.example || '';
+        const cleanedText = String(text || '').replace(/[\x00-\x1F\x7F-\x9F]/g, "").trim();
+        if (!cleanedText) {
+            this.currentPattern.parts = {};
+            return;
+        }
+        
+        const dataString = cleanedText.replace(/^\[\)\>\s*\d{2}\s*/, '').replace(/\s+/g, '');
+        let result = { fiche: '', date: '', ipei: '', pid: '' };
+        
+        const identifiers = { '1P': 'fiche', '10D': 'date', '22S': 'ipei', '34S': 'pid' };
+        const allIds = Object.keys(identifiers).join('|');
+        const regex = new RegExp(`(${allIds})`, 'g');
+        const matches = [...dataString.matchAll(regex)];
+
+        if (matches.length > 0) {
+            matches.forEach((match, i) => {
+                const identifier = match[1];
+                const field = identifiers[identifier];
+                const startIndex = match.index + identifier.length;
+                const nextMatch = matches[i + 1];
+                const endIndex = nextMatch ? nextMatch.index : dataString.length;
+                let dataValue = dataString.substring(startIndex, endIndex);
+                result[field] = dataValue;
+            });
+            this.currentPattern.parts = result;
+        } else {
+            this.currentPattern.parts = {};
+        }
+    },
+    resetPatternForm() {
+        this.currentPattern = { id: null, name: '', deviceName: '', example: '', parts: {} };
+    },
+    editPattern(pattern) {
+        this.currentPattern = JSON.parse(JSON.stringify(pattern));
+        if (!this.currentPattern.parts) {
+            this.currentPattern.parts = {};
+        }
+    },
+    async savePattern() {
+        if (!this.currentPattern.name) {
+            this.showNotification('Mustername ist erforderlich.', 'error');
+            return;
+        }
+        
+        // This makes a copy to avoid reactivity issues.
+        const patterns = JSON.parse(JSON.stringify(this.qrCodePatterns));
+        if(this.currentPattern.id) {
+            // Find and update existing
+            const index = patterns.findIndex(p => p.id === this.currentPattern.id);
+            if(index !== -1) {
+                patterns[index] = this.currentPattern;
+            }
+        } else {
+            // Add new with a temporary ID
+            patterns.push({ ...this.currentPattern, id: Date.now().toString() });
+        }
+
+        try {
+            await setDoc(doc(db, 'config', 'qrCodePatterns'), { patterns: patterns });
+            this.showNotification('Muster erfolgreich gespeichert.', 'success');
+            this.resetPatternForm();
+        } catch(e) {
+            console.error('Fehler beim Speichern der Muster:', e);
+            this.showNotification('Fehler beim Speichern der Muster.', 'error');
+        }
+    },
+    async deletePattern(patternId) {
+        const updatedPatterns = this.qrCodePatterns.filter(p => p.id !== patternId);
+        try {
+            await setDoc(doc(db, 'config', 'qrCodePatterns'), { patterns: updatedPatterns });
+            this.showNotification('Muster gelöscht.', 'info');
+        } catch (e) {
+            console.error('Fehler beim Löschen des Musters:', e);
+            this.showNotification('Fehler beim Löschen des Musters.', 'error');
+        }
+    },
+    async runArchiveCheck() {
+        const now = Date.now();
+        // Run check only once per hour to save reads
+        if (this.lastArchiveCheck && (now - this.lastArchiveCheck < 3600000)) {
+            return;
+        }
+        this.lastArchiveCheck = now;
+
+        const threeMonthsAgo = new Date();
+        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
+        const q = query(collection(db, 'repairs'), 
+            where('status', 'in', [this.t.statusCompleted, this.t.statusCompletedAtCustomer]),
+            where('completedAt', '<=', threeMonthsAgo)
+        );
+
+        const snapshot = await getDocs(q);
+        if (snapshot.empty) {
+            return; // Nothing to archive
+        }
+
+        const batch = writeBatch(db);
+        snapshot.docs.forEach(d => {
+            const data = d.data();
+            const archiveRef = doc(db, 'archived_repairs', d.id);
+            const originalRef = doc(db, 'repairs', d.id);
+            batch.set(archiveRef, data);
+            batch.delete(originalRef);
+        });
+
+        await batch.commit();
+        this.showNotification(this.t.notifArchived(snapshot.size), 'info');
+    },
+    async unarchiveRepair(repairId) {
+        const repairDoc = this.archivedRepairs.find(r => r.id === repairId);
+        if (repairDoc) {
+            const batch = writeBatch(db);
+            const newRef = doc(db, 'repairs', repairId);
+            const oldRef = doc(db, 'archived_repairs', repairId);
+            
+            // Remove completedAt to prevent immediate re-archiving if status isn't changed
+            const dataToRestore = { ...repairDoc };
+            delete dataToRestore.completedAt;
+
+            batch.set(newRef, dataToRestore);
+            batch.delete(oldRef);
+            await batch.commit();
+            this.showNotification(this.t.notifRestored, 'success');
+        }
+    }
     },
     async mounted(){
       window.addEventListener('online', () => this.isOnline = true);
@@ -1685,11 +1849,17 @@
             this.listenToConfig('technicians', 'technikerList', 'list');
             
             onSnapshot(collection(db, 'knowledgeBase'), (s) => { this.knowledgeBase = s.docs.map(d => ({ id: d.id, ...d.data() })); });
-            onSnapshot(query(collection(db, 'qrCodePatterns')), (s) => { this.qrCodePatterns = s.docs.map(d => ({ id: d.id, ...d.data() })); });
+            onSnapshot(doc(db, 'config', 'qrCodePatterns'), (doc) => {
+                if (doc.exists() && doc.data().patterns) {
+                    this.qrCodePatterns = doc.data().patterns;
+                }
+            });
 
             if(this.user.isAdmin) {
                 onSnapshot(collection(db,'users'), s => { this.userList = s.docs.map(d => ({ id:d.id, ...d.data() })); });
                 this.listenToConfig('commonErrors', 'commonErrors', 'list');
+                this.listenToArchivedRepairs();
+                this.runArchiveCheck();
             }
           } else {
             this.user = { loggedIn:false, email:null, uid:null, isAdmin:false, technicianName: null };
@@ -1712,12 +1882,4 @@
 </script>
 </body>
 </html>
-" and the user is asking to make an edit to this file.
-I have been provided with the following user query: "also mit meinem pixel 6 geht es mit dem zoom aber mit dem telefon lg velvet geht es nicht was kann das sein"
-I have been provided with the following instructions: "Just acknowledge my request in the introduction.
-Make sure to refer to the document as "Canvas" in your response.
-"
-I will now edit the document based on the user's query.
-
-Okay, ich habe die Anfrage verstanden. Ich werde die notwendigen Änderungen im Canvas vornehmen.
 
