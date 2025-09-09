@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Reparatur Manager Online v1.80</title>
+  <title>Reparatur Manager Online v1.81</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -236,26 +236,26 @@
           <!-- Filter Sektion -->
           <div class="flex flex-wrap items-end gap-4">
             <div v-if="currentView !== 'my_repairs'">
-              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.houseFilterLabel }}</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.houseFilterLabel }}</label>
               <select v-model="filter.house" class="mt-1 inline-block py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                 <option value="">{{ t.all }}</option><option v-for="house in houses" :key="house" :value="house">{{ house }}</option>
               </select>
             </div>
             <div v-if="currentView !== 'my_repairs'">
-              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.technicianFilterLabel }}</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.technicianFilterLabel }}</label>
               <select v-model="filter.technician" class="mt-1 inline-block py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                 <option value="">{{ t.all }}</option><option v-for="tech in technikerList" :key="tech" :value="tech">{{ tech }}</option>
               </select>
             </div>
               <div>
-              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.statusFilterLabel }}</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.statusFilterLabel }}</label>
               <select v-model="filter.status" class="mt-1 inline-block py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                 <option value="">{{ t.all }}</option>
                 <option>{{ t.statusOpen }}</option><option>{{ t.statusInProgress }}</option><option>{{ t.statusCompleted }}</option><option>{{ t.statusCompletedAtCustomer }}</option>
               </select>
             </div>
             <div>
-              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.searchLabel }}</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.searchLabel }}</label>
               <input v-model="filter.search" type="text" :placeholder="t.searchPlaceholder" class="mt-1 inline-block w-full sm:w-64 py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
             </div>
           </div>
@@ -671,6 +671,11 @@
     <div class="modal-content max-w-lg w-full">
       <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 mb-4">QR-Code scannen</h3>
       <div id="qr-reader" class="w-full"></div>
+      <!-- Zoom Slider -->
+      <div v-if="zoomCapabilities.isSupported" class="mt-4">
+          <label for="zoom-slider" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Zoom: {{ currentZoom }}x</label>
+          <input id="zoom-slider" type="range" v-model.number="currentZoom" :min="zoomCapabilities.min" :max="zoomCapabilities.max" :step="zoomCapabilities.step" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
+      </div>
       <div class="mt-4 flex justify-end">
         <button @click="stopScanner" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">{{ t.closeButton }}</button>
       </div>
@@ -738,7 +743,7 @@
   const appConfig = {
     data() {
       return {
-        version: '1.80',
+        version: '1.81',
         isAuthReady: false,
         user: { loggedIn: false, email: null, uid: null, isAdmin: false, technicianName: null },
         loginForm: { email: '', password: '', error: '' },
@@ -810,6 +815,8 @@
         isScannerActive: false,
         html5QrCode: null,
         isDarkMode: false,
+        currentZoom: 1,
+        zoomCapabilities: { isSupported: false, min: 1, max: 1, step: 0.1, track: null },
         
         allRepairsForStats: [],
         charts: { status: null, errors: null, houses: null },
@@ -912,7 +919,12 @@
       isOnline(newStatus) {
         if (newStatus) this.showNotification(this.t.notifNowOnline, 'success');
         else this.showNotification(this.t.notifNowOffline, 'info');
-      }
+      },
+      currentZoom(newValue) {
+        if (this.zoomCapabilities.isSupported && this.zoomCapabilities.track) {
+            this.zoomCapabilities.track.applyConstraints({ advanced: [{ zoom: newValue }] });
+        }
+      },
     },
     computed: {
       t() { return this.translations.de; },
@@ -1073,9 +1085,11 @@
           this.html5QrCode = new Html5Qrcode("qr-reader");
           const config = { fps: 10, qrbox: { width: 250, height: 250 } };
           this.html5QrCode.start({ facingMode: "environment" }, config, this.onScanSuccess, this.onScanFailure)
+            .then(() => { this.setupZoom(); })
             .catch(err => {
               console.error("Kann Rückkamera nicht starten, versuche Frontkamera:", err);
               this.html5QrCode.start({ facingMode: "user" }, config, this.onScanSuccess, this.onScanFailure)
+                 .then(() => { this.setupZoom(); })
                  .catch(errUser => {
                      this.showNotification("Kamera kann nicht gestartet werden.", "error");
                      this.stopScanner();
@@ -1084,16 +1098,37 @@
         });
       },
       stopScanner() {
-        if (this.html5QrCode && this.isScannerActive) {
-          this.html5QrCode.stop().catch(err => {
-            console.error("Fehler beim Stoppen des Scanners:", err);
-          }).finally(() => {
-            this.isScannerActive = false;
-            this.html5QrCode = null;
-          });
-        } else {
-            this.isScannerActive = false;
+          if (this.html5QrCode && this.isScannerActive) {
+            this.html5QrCode.stop().then(() => {
+                // success
+            }).catch(err => {
+                console.error("Fehler beim Stoppen des Scanners. Wird trotzdem geschlossen.", err);
+            }).finally(() => {
+                this.isScannerActive = false;
+                this.html5QrCode = null;
+                this.zoomCapabilities = { isSupported: false, min: 1, max: 1, step: 0.1, track: null };
+                this.currentZoom = 1;
+            });
         }
+        this.isScannerActive = false; // Ensure it's always set to false
+      },
+      setupZoom() {
+          const videoElement = document.querySelector('#qr-reader video');
+          if (videoElement && videoElement.srcObject) {
+              const track = videoElement.srcObject.getVideoTracks()[0];
+              const capabilities = track.getCapabilities();
+
+              if (capabilities.zoom) {
+                  this.zoomCapabilities = {
+                      isSupported: true,
+                      min: capabilities.zoom.min,
+                      max: capabilities.zoom.max,
+                      step: capabilities.zoom.step,
+                      track: track
+                  };
+                  this.currentZoom = capabilities.zoom.min;
+              }
+          }
       },
       
       async addRepair(){
@@ -1633,3 +1668,4 @@
 </script>
 </body>
 </html>
+
