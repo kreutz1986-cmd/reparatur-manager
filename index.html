@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Reparatur Manager Online v1.81</title>
+  <title>Reparatur Manager Online v1.82</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -676,7 +676,9 @@
           <label for="zoom-slider" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Zoom: {{ currentZoom }}x</label>
           <input id="zoom-slider" type="range" v-model.number="currentZoom" :min="zoomCapabilities.min" :max="zoomCapabilities.max" :step="zoomCapabilities.step" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
       </div>
-      <div class="mt-4 flex justify-end">
+      <div class="mt-4 flex justify-between items-center">
+        <button v-if="cameras.list.length > 1" @click="switchCamera" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-md text-sm">Kamera wechseln</button>
+        <div v-else></div> <!-- Placeholder to keep close button on the right -->
         <button @click="stopScanner" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">{{ t.closeButton }}</button>
       </div>
     </div>
@@ -743,7 +745,7 @@
   const appConfig = {
     data() {
       return {
-        version: '1.81',
+        version: '1.82',
         isAuthReady: false,
         user: { loggedIn: false, email: null, uid: null, isAdmin: false, technicianName: null },
         loginForm: { email: '', password: '', error: '' },
@@ -817,6 +819,7 @@
         isDarkMode: false,
         currentZoom: 1,
         zoomCapabilities: { isSupported: false, min: 1, max: 1, step: 0.1, track: null },
+        cameras: { list: [], index: 0 },
         
         allRepairsForStats: [],
         charts: { status: null, errors: null, houses: null },
@@ -1079,26 +1082,42 @@
       onScanFailure(error) {
         // console.warn(`Code scan error = ${error}`);
       },
-      startScanner() {
+      async startScanner() {
         this.isScannerActive = true;
-        this.$nextTick(() => {
-          this.html5QrCode = new Html5Qrcode("qr-reader");
-          const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-          this.html5QrCode.start({ facingMode: "environment" }, config, this.onScanSuccess, this.onScanFailure)
-            .then(() => { this.setupZoom(); })
-            .catch(err => {
-              console.error("Kann Rückkamera nicht starten, versuche Frontkamera:", err);
-              this.html5QrCode.start({ facingMode: "user" }, config, this.onScanSuccess, this.onScanFailure)
-                 .then(() => { this.setupZoom(); })
-                 .catch(errUser => {
-                     this.showNotification("Kamera kann nicht gestartet werden.", "error");
-                     this.stopScanner();
-                 });
-            });
-        });
+        await this.$nextTick(); 
+
+        try {
+            const cameras = await Html5Qrcode.getCameras();
+            if (cameras && cameras.length) {
+                this.cameras.list = cameras;
+                this.cameras.index = cameras.findIndex(cam => cam.label.toLowerCase().includes('back'));
+                if(this.cameras.index === -1) this.cameras.index = 0;
+
+                this.html5QrCode = new Html5Qrcode("qr-reader");
+                const config = { 
+                    fps: 10, 
+                    qrbox: (viewfinderWidth, viewfinderHeight) => {
+                        const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+                        return { width: minEdge * 0.7, height: minEdge * 0.7 };
+                    }
+                };
+                
+                const cameraId = this.cameras.list[this.cameras.index].id;
+                await this.html5QrCode.start(cameraId, config, this.onScanSuccess, this.onScanFailure);
+                this.setupZoom();
+
+            } else {
+                 this.showNotification("Keine Kamera gefunden.", "error");
+                 this.stopScanner();
+            }
+        } catch (err) {
+            console.error("Fehler beim Starten des Scanners:", err);
+            this.showNotification("Kamera kann nicht gestartet werden.", "error");
+            this.stopScanner();
+        }
       },
       stopScanner() {
-          if (this.html5QrCode && this.isScannerActive) {
+          if (this.html5QrCode && this.html5QrCode.isScanning) {
             this.html5QrCode.stop().then(() => {
                 // success
             }).catch(err => {
@@ -1108,9 +1127,34 @@
                 this.html5QrCode = null;
                 this.zoomCapabilities = { isSupported: false, min: 1, max: 1, step: 0.1, track: null };
                 this.currentZoom = 1;
+                this.cameras = { list: [], index: 0 };
             });
+        } else {
+           this.isScannerActive = false;
         }
-        this.isScannerActive = false; // Ensure it's always set to false
+      },
+      async switchCamera() {
+          if (this.cameras.list.length > 1 && this.html5QrCode && this.html5QrCode.isScanning) {
+              const nextIndex = (this.cameras.index + 1) % this.cameras.list.length;
+              this.cameras.index = nextIndex;
+              const nextCameraId = this.cameras.list[nextIndex].id;
+              
+              try {
+                  await this.html5QrCode.stop();
+                  const config = { 
+                      fps: 10, 
+                      qrbox: (viewfinderWidth, viewfinderHeight) => {
+                          const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+                          return { width: minEdge * 0.7, height: minEdge * 0.7 };
+                      }
+                  };
+                  await this.html5QrCode.start(nextCameraId, config, this.onScanSuccess, this.onScanFailure);
+                  this.setupZoom();
+              } catch (err) {
+                  console.error("Fehler beim Kamerawechsel:", err);
+                  this.showNotification("Kamera konnte nicht gewechselt werden.", "error");
+              }
+          }
       },
       setupZoom() {
           const videoElement = document.querySelector('#qr-reader video');
@@ -1668,4 +1712,12 @@
 </script>
 </body>
 </html>
+" and the user is asking to make an edit to this file.
+I have been provided with the following user query: "also mit meinem pixel 6 geht es mit dem zoom aber mit dem telefon lg velvet geht es nicht was kann das sein"
+I have been provided with the following instructions: "Just acknowledge my request in the introduction.
+Make sure to refer to the document as "Canvas" in your response.
+"
+I will now edit the document based on the user's query.
+
+Okay, ich habe die Anfrage verstanden. Ich werde die notwendigen Änderungen im Canvas vornehmen.
 
