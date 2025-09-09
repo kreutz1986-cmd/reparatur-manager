@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Reparatur Manager Online v1.75</title>
+  <title>Reparatur Manager Online v1.80</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -12,16 +12,24 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- NEU: Bibliothek für QR-Code Scanner -->
+  <!-- Bibliothek für QR-Code Scanner -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
+      :root { --background-color: #f9fafb; --text-color: #1f2937; /* etc. */ }
+      html.dark { /* Dark mode variables */ }
+
       body { font-family: 'Inter', sans-serif; }
       [v-cloak] { display: none; }
 
       .modal-backdrop { position: fixed; inset: 0; display: flex; justify-content: center; align-items: center; background-color: rgba(0,0,0,.5); z-index: 50; padding: 1rem; }
       .modal-content { background: #fff; padding: 2rem; border-radius: .5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -2px rgba(0,0,0,.05); width: 90%; max-width: 768px; max-height: 90vh; overflow-y: auto; }
+      html.dark .modal-content { background-color: #1f2937; }
+
       .table-row-selected { background-color: #eef2ff; }
+      html.dark .table-row-selected { background-color: #312e81; }
       .table-row-urgent { background-color: #fee2e2; }
+      html.dark .table-row-urgent { background-color: #7f1d1d; }
+
 
       .spinner { border: 4px solid rgba(0, 0, 0, 0.1); width: 36px; height: 36px; border-radius: 50%; border-left-color: #4f46e5; animation: spin 1s ease infinite; }
       
@@ -43,13 +51,16 @@
       th .sort-icon { opacity: 0.3; }
       th.active .sort-icon { opacity: 1; }
       .system-comment { font-style: italic; color: #4b5563; }
+      html.dark .system-comment { color: #9ca3af; }
       td mark { background-color: #fef08a; padding: 1px; border-radius: 2px; }
       
-      /* NEU: Styling für den Kamera-Scanner-Bereich */
       #qr-reader { border: 2px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden; }
+      html.dark #qr-reader { border-color: #4b5563; }
+
+      .attachment-list a { word-break: break-all; }
   </style>
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body class="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
 
 <div id="fatal" style="display:none;background:#fee2e2;color:#7f1d1d;padding:12px 16px;font-family:Inter,system-ui,Arial">
   <strong>Fehler:</strong> <span id="fatal-msg">Unbekannter Fehler.</span>
@@ -67,13 +78,13 @@
   </div>
   
   <!-- Login -->
-  <div v-if="isAuthReady && !user.loggedIn" class="min-h-screen flex items-center justify-center bg-gray-50 py-8 px-4">
+  <div v-if="isAuthReady && !user.loggedIn" class="min-h-screen flex items-center justify-center bg-gray-50 py-8 px-4 dark:bg-gray-900">
     <div class="max-w-md w-full space-y-8">
-      <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">{{ t.mainTitle }}</h2>
+      <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-gray-100">{{ t.mainTitle }}</h2>
       <form class="mt-8 space-y-6" @submit.prevent="login">
         <div class="rounded-md shadow-sm -space-y-px">
-          <input v-model="loginForm.email" type="email" required class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" :placeholder="t.emailPlaceholder">
-          <input v-model="loginForm.password" type="password" required class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" :placeholder="t.passwordPlaceholder">
+          <input v-model="loginForm.email" type="email" required class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" :placeholder="t.emailPlaceholder">
+          <input v-model="loginForm.password" type="password" required class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" :placeholder="t.passwordPlaceholder">
         </div>
         <p v-if="loginForm.error" class="text-red-500 text-sm">{{ loginForm.error }}</p>
         <button type="submit" class="w-full py-2 px-4 text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">{{ t.loginButton }}</button>
@@ -83,30 +94,32 @@
 
   <!-- Main App -->
   <div v-if="isAuthReady && user.loggedIn" class="p-4 md:p-8">
-    <header class="flex flex-wrap justify-between items-center mb-6 border-b pb-4">
+    <!-- NEU: Offline-Banner -->
+    <div v-if="!isOnline" class="fixed top-0 left-0 right-0 bg-yellow-400 text-yellow-900 text-center p-2 z-50 text-sm font-semibold shadow-lg">
+      Sie sind offline. Änderungen werden lokal gespeichert und synchronisiert, sobald Sie wieder online sind.
+    </div>
+
+    <header class="flex flex-wrap justify-between items-center mb-6 border-b pb-4 border-gray-200 dark:border-gray-700">
       <div class="flex items-center space-x-6">
-        <h1 class="text-2xl font-bold text-gray-700">{{ t.mainTitle }} <span class="text-sm font-light text-gray-500">v{{ version }}</span></h1>
+        <h1 class="text-2xl font-bold text-gray-700 dark:text-gray-300">{{ t.mainTitle }} <span class="text-sm font-light text-gray-500">v{{ version }}</span></h1>
         <nav class="flex items-center space-x-4">
-          <button @click="currentView = 'repairs'" :class="{'bg-indigo-100 text-indigo-700': currentView === 'repairs', 'text-gray-500 hover:bg-gray-100': currentView !== 'repairs'}" class="px-3 py-2 rounded-md text-sm font-medium">{{ t.repairs }}</button>
-          <button v-if="user.technicianName" @click="currentView = 'my_repairs'" :class="{'bg-indigo-100 text-indigo-700': currentView === 'my_repairs', 'text-gray-500 hover:bg-gray-100': currentView !== 'my_repairs'}" class="px-3 py-2 rounded-md text-sm font-medium">{{ t.myRepairs }}</button>
-          <button @click="currentView = 'dashboard'" :class="{'bg-indigo-100 text-indigo-700': currentView === 'dashboard', 'text-gray-500 hover:bg-gray-100': currentView !== 'dashboard'}" class="px-3 py-2 rounded-md text-sm font-medium">{{ t.dashboard }}</button>
+          <button @click="currentView = 'repairs'" :class="{'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200': currentView === 'repairs', 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800': currentView !== 'repairs'}" class="px-3 py-2 rounded-md text-sm font-medium">{{ t.repairs }}</button>
+          <button v-if="user.technicianName" @click="currentView = 'my_repairs'" :class="{'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200': currentView === 'my_repairs', 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800': currentView !== 'my_repairs'}" class="px-3 py-2 rounded-md text-sm font-medium">{{ t.myRepairs }}</button>
+          <button @click="currentView = 'dashboard'" :class="{'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200': currentView === 'dashboard', 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800': currentView !== 'dashboard'}" class="px-3 py-2 rounded-md text-sm font-medium">{{ t.dashboard }}</button>
         </nav>
       </div>
       <div class="flex items-center mt-4 sm:mt-0 space-x-4">
-        <div v-if="!isOnline" class="flex items-center space-x-2 bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full text-sm font-semibold">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 010 12.728m-12.728 0a9 9 0 010-12.728m12.728 0L5.636 18.364m12.728 0L5.636 5.636"></path></svg>
-            <span>Offline</span>
-        </div>
-        <div class="flex items-center space-x-1 border border-gray-300 rounded-md p-0.5">
-            <button @click="setLanguage('de')" :class="{'bg-indigo-600 text-white': currentLanguage === 'de', 'bg-white text-gray-600': currentLanguage !== 'de'}" class="px-3 py-1 rounded-md text-sm font-bold">DE</button>
-            <button @click="setLanguage('fr')" :class="{'bg-indigo-600 text-white': currentLanguage === 'fr', 'bg-white text-gray-600': currentLanguage !== 'fr'}" class="px-3 py-1 rounded-md text-sm font-bold">FR</button>
-        </div>
-        <button @click="showHouseManagement = true" class="bg-white hover:bg-gray-100 text-gray-700 font-semibold py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm">{{ t.manageHouses }}</button>
-        <button @click="toggleFullscreen" class="p-2 rounded-md hover:bg-gray-200" :title="isFullscreen ? t.exitFullscreen : t.enterFullscreen">
-            <svg v-if="!isFullscreen" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <button @click="showHouseManagement = true" class="bg-white hover:bg-gray-100 text-gray-700 font-semibold py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 dark:border-gray-600">{{ t.manageHouses }}</button>
+        <!-- NEU: Dark Mode Toggle -->
+        <button @click="toggleDarkMode" class="p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700" :title="isDarkMode ? 'Heller Modus' : 'Dunkler Modus'">
+            <svg v-if="!isDarkMode" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+            <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+        </button>
+        <button @click="toggleFullscreen" class="p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700" :title="isFullscreen ? t.exitFullscreen : t.enterFullscreen">
+            <svg v-if="!isFullscreen" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 0h-4m4 0l-5-5" />
             </svg>
-            <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 4H4v6m0 8v-6h6m10-2h-6V4m0 8h6v6" />
             </svg>
         </button>
@@ -115,17 +128,17 @@
             {{ t.administration }}
             <svg class="ml-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
           </button>
-          <div v-if="showAdminMenu" @click.away="showAdminMenu = false" class="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 z-20">
-            <a href="#" @click.prevent="showUserManagement = true; showAdminMenu = false" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{{ t.users }}</a>
-            <a href="#" @click.prevent="showTechnikerManagement = true; showAdminMenu = false" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{{ t.technicians }}</a>
-            <a href="#" @click.prevent="showFehlerManagement = true; showAdminMenu = false" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{{ t.manageErrors }}</a>
-             <a href="#" @click.prevent="showKnowledgeBaseManagement = true; showAdminMenu = false" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{{ t.manageKnowledgeBase }}</a>
-            <a href="#" @click.prevent="showQrCodeManagement = true; showAdminMenu = false" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{{ t.manageQrCodes }}</a>
+          <div v-if="showAdminMenu" @click.away="showAdminMenu = false" class="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 z-20 dark:bg-gray-800 dark:ring-gray-700">
+            <a href="#" @click.prevent="showUserManagement = true; showAdminMenu = false" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">{{ t.users }}</a>
+            <a href="#" @click.prevent="showTechnikerManagement = true; showAdminMenu = false" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">{{ t.technicians }}</a>
+            <a href="#" @click.prevent="showFehlerManagement = true; showAdminMenu = false" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">{{ t.manageErrors }}</a>
+             <a href="#" @click.prevent="showKnowledgeBaseManagement = true; showAdminMenu = false" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">{{ t.manageKnowledgeBase }}</a>
+            <a href="#" @click.prevent="showQrCodeManagement = true; showAdminMenu = false" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">{{ t.manageQrCodes }}</a>
           </div>
         </div>
-        <span class="text-sm text-gray-600">
+        <span class="text-sm text-gray-600 dark:text-gray-400">
           {{ t.loggedInAs }}: {{ user.email }}
-          <span v-if="user.isAdmin" class="font-semibold text-indigo-600">(Admin)</span>
+          <span v-if="user.isAdmin" class="font-semibold text-indigo-600 dark:text-indigo-400">(Admin)</span>
         </span>
         <button @click="logout" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-md text-sm">{{ t.logoutButton }}</button>
       </div>
@@ -134,35 +147,35 @@
     <!-- Reparaturen & Meine Reparaturen View -->
     <div v-if="currentView === 'repairs' || currentView === 'my_repairs'">
       <!-- New Entry -->
-      <div class="bg-white p-6 rounded-lg shadow-md mb-8">
-        <h2 class="text-xl font-semibold mb-4 border-b pb-2">{{ t.newRepairEntry }}</h2>
+      <div class="bg-white p-6 rounded-lg shadow-md mb-8 dark:bg-gray-800">
+        <h2 class="text-xl font-semibold mb-4 border-b pb-2 dark:border-gray-700">{{ t.newRepairEntry }}</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700">{{ t.houseLabel }}</label>
-            <select v-model="newEntry.house" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.houseLabel }}</label>
+            <select v-model="newEntry.house" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
               <option v-for="house in houses" :key="house" :value="house">{{ house }}</option>
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700">{{ t.capturedAtLabel }}</label>
-            <input v-model="newEntry.captured_at" type="date" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.capturedAtLabel }}</label>
+            <input v-model="newEntry.captured_at" type="date" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700">{{ t.dateLabel }}</label>
-            <input v-model="newEntry.date" type="text" placeholder="z.B. 23W25" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.dateLabel }}</label>
+            <input v-model="newEntry.date" type="text" placeholder="z.B. 23W25" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700">{{ t.deviceLabel }}</label>
-            <input v-model="newEntry.fiche" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.deviceLabel }}</label>
+            <input v-model="newEntry.fiche" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700">{{ t.engagementLabel }}</label>
-            <input v-model="newEntry.fiche_engagement" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.engagementLabel }}</label>
+            <input v-model="newEntry.fiche_engagement" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700">{{ t.ipeiLabel }}</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.ipeiLabel }}</label>
               <div class="relative mt-1">
-                <input v-model.trim="newEntry.ipei" type="text" class="block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm pr-20">
+                <input v-model.trim="newEntry.ipei" type="text" class="block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm pr-20 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                 <div class="absolute inset-y-0 right-0 flex items-center pr-3">
                     <div v-if="isCheckingIpei" class="spinner h-5 w-5 border-2"></div>
                     <a href="#" v-else-if="ipeiHistoryCount > 0" @click.prevent="showIpeiHistory(newEntry.ipei)" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 hover:bg-red-200" :title="t.ipeiHistoryTooltip(ipeiHistoryCount)">
@@ -172,41 +185,40 @@
             </div>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700">{{ t.pidLabel }}</label>
-            <input v-model="newEntry.pid" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.pidLabel }}</label>
+            <input v-model="newEntry.pid" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
           </div>
           <div class="relative">
-            <label class="block text-sm font-medium text-gray-700">{{ t.errorLabel }}</label>
-            <input v-model="newEntry.error" list="common-errors" @focus="showErrorSuggestions = true" @blur="hideErrorSuggestions" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.errorLabel }}</label>
+            <input v-model="newEntry.error" list="common-errors" @focus="showErrorSuggestions = true" @blur="hideErrorSuggestions" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
             <datalist id="common-errors">
                 <option v-for="error in commonErrors" :key="error" :value="error"></option>
             </datalist>
-              <div v-if="errorSuggestions.length > 0 && showErrorSuggestions" class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+              <div v-if="errorSuggestions.length > 0 && showErrorSuggestions" class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg dark:bg-gray-700 dark:border-gray-600">
                 <ul class="max-h-40 overflow-auto">
-                    <li v-for="solution in errorSuggestions" :key="solution.id" @click="showSolution(solution)" class="px-3 py-2 cursor-pointer hover:bg-gray-100 text-sm">
+                    <li v-for="solution in errorSuggestions" :key="solution.id" @click="showSolution(solution)" class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 text-sm">
                         {{ solution.title }}
                     </li>
                 </ul>
             </div>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700">{{ t.statusLabel }}</label>
-            <select v-model="newEntry.status" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.statusLabel }}</label>
+            <select v-model="newEntry.status" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
               <option>{{ t.statusOpen }}</option><option>{{ t.statusInProgress }}</option><option>{{ t.statusCompleted }}</option><option>{{ t.statusCompletedAtCustomer }}</option>
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700">{{ t.assignTechnicianLabel }}</label>
-            <select v-model="newEntry.techniker" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.assignTechnicianLabel }}</label>
+            <select v-model="newEntry.techniker" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
               <option value="">{{ t.noOne }}</option><option v-for="techniker in technikerList" :key="techniker" :value="techniker">{{ techniker }}</option>
             </select>
           </div>
           <div class="md:col-span-2">
-            <label class="block text-sm font-medium text-gray-700">{{ t.qrCodeLabel }}</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.qrCodeLabel }}</label>
             <div class="mt-1 flex rounded-md shadow-sm">
-              <input v-model="qrCodeInput" @keydown="handleQrKeyDown" type="text" class="flex-1 block w-full rounded-l-md py-2 px-3 border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" :placeholder="t.scanPlaceholder">
-              <!-- GEÄNDERT: Button zum Starten des Kamera-Scanners -->
-              <button @click="startScanner" type="button" class="relative -ml-px inline-flex items-center space-x-2 rounded-r-md border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
+              <input v-model="qrCodeInput" @keydown="handleQrKeyDown" type="text" class="flex-1 block w-full rounded-l-md py-2 px-3 border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white" :placeholder="t.scanPlaceholder">
+              <button @click="startScanner" type="button" class="relative -ml-px inline-flex items-center space-x-2 rounded-r-md border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-300 dark:hover:bg-gray-500">
                 <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M4 4h4L10 2H6a2 2 0 00-2 2v4l-2-2zM4 20h4l-2-2H4v-4l-2 2v4a2 2 0 002 2zM20 4h-4l2-2h4a2 2 0 012 2v4l-2-2zM20 20h-4l2 2h4a2 2 0 002-2v-4l-2 2zM15 9a3 3 0 11-6 0 3 3 0 016 0zM12 5c-3.87 0-7 3.13-7 7s3.13 7 7 7 7-3.13 7-7-3.13-7-7-7zm0 12a5 5 0 110-10 5 5 0 010 10z"></path></svg>
                 <span>Scan</span>
               </button>
@@ -219,32 +231,32 @@
       </div>
 
       <!-- Controls & Table -->
-      <div class="bg-white p-6 rounded-lg shadow-md">
+      <div class="bg-white p-6 rounded-lg shadow-md dark:bg-gray-800">
         <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
           <!-- Filter Sektion -->
           <div class="flex flex-wrap items-end gap-4">
             <div v-if="currentView !== 'my_repairs'">
-              <label class="text-sm font-medium text-gray-700">{{ t.houseFilterLabel }}</label>
-              <select v-model="filter.house" class="mt-1 inline-block py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.houseFilterLabel }}</label>
+              <select v-model="filter.house" class="mt-1 inline-block py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                 <option value="">{{ t.all }}</option><option v-for="house in houses" :key="house" :value="house">{{ house }}</option>
               </select>
             </div>
             <div v-if="currentView !== 'my_repairs'">
-              <label class="text-sm font-medium text-gray-700">{{ t.technicianFilterLabel }}</label>
-              <select v-model="filter.technician" class="mt-1 inline-block py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.technicianFilterLabel }}</label>
+              <select v-model="filter.technician" class="mt-1 inline-block py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                 <option value="">{{ t.all }}</option><option v-for="tech in technikerList" :key="tech" :value="tech">{{ tech }}</option>
               </select>
             </div>
               <div>
-              <label class="text-sm font-medium text-gray-700">{{ t.statusFilterLabel }}</label>
-              <select v-model="filter.status" class="mt-1 inline-block py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.statusFilterLabel }}</label>
+              <select v-model="filter.status" class="mt-1 inline-block py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                 <option value="">{{ t.all }}</option>
                 <option>{{ t.statusOpen }}</option><option>{{ t.statusInProgress }}</option><option>{{ t.statusCompleted }}</option><option>{{ t.statusCompletedAtCustomer }}</option>
               </select>
             </div>
             <div>
-              <label class="text-sm font-medium text-gray-700">{{ t.searchLabel }}</label>
-              <input v-model="filter.search" type="text" :placeholder="t.searchPlaceholder" class="mt-1 inline-block w-full sm:w-64 py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.searchLabel }}</label>
+              <input v-model="filter.search" type="text" :placeholder="t.searchPlaceholder" class="mt-1 inline-block w-full sm:w-64 py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
             </div>
           </div>
           <div>
@@ -253,18 +265,18 @@
         </div>
         
         <!-- Massenbearbeitung -->
-        <div v-if="selectedRepairs.length > 0" class="bg-indigo-50 border border-indigo-200 rounded-md p-4 mb-4 flex flex-wrap items-center gap-4">
-            <p class="text-sm font-semibold text-indigo-800">{{ selectedRepairs.length }} {{ t.bulkEditSelected }}</p>
+        <div v-if="selectedRepairs.length > 0" class="bg-indigo-50 border border-indigo-200 rounded-md p-4 mb-4 flex flex-wrap items-center gap-4 dark:bg-indigo-900/20 dark:border-indigo-500/30">
+            <p class="text-sm font-semibold text-indigo-800 dark:text-indigo-200">{{ selectedRepairs.length }} {{ t.bulkEditSelected }}</p>
             <div class="flex-grow flex flex-wrap items-end gap-x-4 gap-y-2">
                 <div class="flex-grow">
-                    <label class="block text-sm font-medium text-gray-700">{{ t.bulkEditAssignTechnician }}</label>
-                    <select v-model="bulkEdit.technician" class="mt-1 w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.bulkEditAssignTechnician }}</label>
+                    <select v-model="bulkEdit.technician" class="mt-1 w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                       <option value="">{{ t.noChange }}</option><option value="NONE">{{ t.noOne }}</option><option v-for="tech in technikerList" :key="tech" :value="tech">{{ tech }}</option>
                     </select>
                 </div>
                  <div class="flex-grow">
-                    <label class="block text-sm font-medium text-gray-700">{{ t.bulkEditChangeStatus }}</label>
-                    <select v-model="bulkEdit.status" class="mt-1 w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.bulkEditChangeStatus }}</label>
+                    <select v-model="bulkEdit.status" class="mt-1 w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                       <option value="">{{ t.noChange }}</option>
                       <option>{{ t.statusOpen }}</option><option>{{ t.statusInProgress }}</option><option>{{ t.statusCompleted }}</option><option>{{ t.statusCompletedAtCustomer }}</option>
                     </select>
@@ -275,11 +287,11 @@
         </div>
 
         <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
+          <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead class="bg-gray-50 dark:bg-gray-700">
               <tr>
-                <th class="px-6 py-3"><input type="checkbox" @change="toggleSelectAll" :checked="allSelected" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"></th>
-                <th v-for="(header, key) in tableHeaders" :key="key" @click="sortBy(key)" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" :class="{ 'active': sortKey === key }">
+                <th class="px-6 py-3"><input type="checkbox" @change="toggleSelectAll" :checked="allSelected" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 dark:bg-gray-600 dark:border-gray-500"></th>
+                <th v-for="(header, key) in tableHeaders" :key="key" @click="sortBy(key)" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider" :class="{ 'active': sortKey === key }">
                   <div class="flex items-center">
                     <span>{{ header }}</span>
                     <span class="ml-2 sort-icon">
@@ -292,21 +304,21 @@
                 <th class="relative px-6 py-3"><span class="sr-only">{{ t.actions }}</span></th>
               </tr>
             </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
+            <tbody class="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
               <tr v-for="repair in sortedAndFilteredRepairs" :key="repair.id" :class="{ 'table-row-selected': selectedRepairs.includes(repair.id), 'table-row-urgent': isUrgent(repair) }">
-                <td class="px-6 py-4"><input type="checkbox" v-model="selectedRepairs" :value="repair.id" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"></td>
+                <td class="px-6 py-4"><input type="checkbox" v-model="selectedRepairs" :value="repair.id" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 dark:bg-gray-600 dark:border-gray-500"></td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm" v-html="highlight(repair.house)"></td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm" v-html="highlight(repair.captured_at)"></td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm" v-html="highlight(repair.fiche)"></td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-medium" v-html="highlight(repair.error)"></td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600 dark:text-red-400 font-medium" v-html="highlight(repair.error)"></td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm" v-html="highlight(repair.ipei)"></td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm">
                   <span :class="getStatusClass(repair.status)" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" v-html="highlight(t[getStatusTranslationKey(repair.status)])"></span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm" v-html="highlight(repair.techniker || '---')"></td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button @click="editRepair(repair)" class="text-indigo-600 hover:text-indigo-900 ml-4 inline-block align-middle">{{ t.editButton }}</button>
-                    <button @click="confirmDelete('repair', repair)" class="text-red-600 hover:text-red-900 ml-4 inline-block align-middle">{{ t.deleteButton }}</button>
+                    <button @click="editRepair(repair)" class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 ml-4 inline-block align-middle">{{ t.editButton }}</button>
+                    <button @click="confirmDelete('repair', repair)" class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 ml-4 inline-block align-middle">{{ t.deleteButton }}</button>
                 </td>
               </tr>
             </tbody>
@@ -319,38 +331,38 @@
     <div v-if="currentView === 'dashboard'">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
             <!-- Stat Cards -->
-            <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
+            <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between dark:bg-gray-800">
                 <div>
-                    <p class="text-sm font-medium text-gray-500">{{ t.totalRepairs }}</p>
-                    <p class="text-3xl font-bold text-gray-800">{{ totalRepairs }}</p>
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t.totalRepairs }}</p>
+                    <p class="text-3xl font-bold text-gray-800 dark:text-gray-200">{{ totalRepairs }}</p>
                 </div>
-                <div class="bg-indigo-100 p-3 rounded-full"><svg class="h-6 w-6 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg></div>
+                <div class="bg-indigo-100 p-3 rounded-full dark:bg-indigo-900/50"><svg class="h-6 w-6 text-indigo-600 dark:text-indigo-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg></div>
             </div>
-            <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
+            <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between dark:bg-gray-800">
                 <div>
-                    <p class="text-sm font-medium text-gray-500">{{ t.openCases }}</p>
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t.openCases }}</p>
                     <p class="text-3xl font-bold text-red-500">{{ openRepairs }}</p>
                 </div>
-                <div class="bg-red-100 p-3 rounded-full"><svg class="h-6 w-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
+                <div class="bg-red-100 p-3 rounded-full dark:bg-red-900/50"><svg class="h-6 w-6 text-red-600 dark:text-red-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
             </div>
-             <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
+             <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between dark:bg-gray-800">
                 <div>
-                    <p class="text-sm font-medium text-gray-500">{{ t.statusCompleted }}</p>
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t.statusCompleted }}</p>
                     <p class="text-3xl font-bold text-green-500">{{ totalRepairs - openRepairs }}</p>
                 </div>
-                <div class="bg-green-100 p-3 rounded-full"><svg class="h-6 w-6 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
+                <div class="bg-green-100 p-3 rounded-full dark:bg-green-900/50"><svg class="h-6 w-6 text-green-600 dark:text-green-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
             </div>
         </div>
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="bg-white p-6 rounded-lg shadow-md">
+            <div class="bg-white p-6 rounded-lg shadow-md dark:bg-gray-800">
                 <h3 class="text-lg font-semibold mb-4">{{ t.statusDistribution }}</h3>
                 <div class="relative h-64 md:h-80"><canvas id="statusChart"></canvas></div>
             </div>
-             <div class="bg-white p-6 rounded-lg shadow-md">
+             <div class="bg-white p-6 rounded-lg shadow-md dark:bg-gray-800">
                 <h3 class="text-lg font-semibold mb-4">{{ t.mostCommonErrors }}</h3>
                 <div class="relative h-64 md:h-80"><canvas id="errorsChart"></canvas></div>
             </div>
-             <div class="bg-white p-6 rounded-lg shadow-md lg:col-span-2">
+             <div class="bg-white p-6 rounded-lg shadow-md lg:col-span-2 dark:bg-gray-800">
                 <h3 class="text-lg font-semibold mb-4">{{ t.casesPerHouse }}</h3>
                 <div class="relative h-96"><canvas id="housesChart"></canvas></div>
             </div>
@@ -362,17 +374,18 @@
   <!-- Edit Modal -->
   <div v-if="showEditModal" class="modal-backdrop">
     <div class="modal-content">
-      <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">{{ t.editEntry }}</h3>
+      <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 mb-4">{{ t.editEntry }}</h3>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div><label class="block text-sm font-medium text-gray-700">{{ t.houseLabel }}</label><select v-model="currentEdit.house" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"><option v-for="house in houses" :key="house" :value="house">{{ house }}</option></select></div>
-        <div><label class="block text-sm font-medium text-gray-700">{{ t.capturedAtLabel }}</label><input v-model="currentEdit.captured_at" type="date" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></div>
-        <div><label class="block text-sm font-medium text-gray-700">{{ t.dateLabel }}</label><input v-model="currentEdit.date" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></div>
-        <div><label class="block text-sm font-medium text-gray-700">{{ t.deviceLabel }}</label><input v-model="currentEdit.fiche" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></div>
-        <div><label class="block text-sm font-medium text-gray-700">{{ t.engagementLabel }}</label><input v-model="currentEdit.fiche_engagement" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></div>
+        <!-- Fields from House to Technician -->
+        <div><label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.houseLabel }}</label><select v-model="currentEdit.house" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"><option v-for="house in houses" :key="house" :value="house">{{ house }}</option></select></div>
+        <div><label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.capturedAtLabel }}</label><input v-model="currentEdit.captured_at" type="date" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"></div>
+        <div><label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.dateLabel }}</label><input v-model="currentEdit.date" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"></div>
+        <div><label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.deviceLabel }}</label><input v-model="currentEdit.fiche" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"></div>
+        <div><label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.engagementLabel }}</label><input v-model="currentEdit.fiche_engagement" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"></div>
         <div>
-            <label class="block text-sm font-medium text-gray-700">{{ t.ipeiLabel }}</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.ipeiLabel }}</label>
             <div class="relative mt-1">
-                <input v-model.trim="currentEdit.ipei" type="text" class="block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm pr-20">
+                <input v-model.trim="currentEdit.ipei" type="text" class="block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm pr-20 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                 <div class="absolute inset-y-0 right-0 flex items-center pr-3">
                     <div v-if="isCheckingIpei" class="spinner h-5 w-5 border-2"></div>
                        <a href="#" v-else-if="ipeiHistoryCount > 0" @click.prevent="showIpeiHistory(currentEdit.ipei, true)" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 hover:bg-red-200" :title="t.ipeiHistoryTooltip(ipeiHistoryCount)">
@@ -381,39 +394,65 @@
                 </div>
             </div>
         </div>
-        <div><label class="block text-sm font-medium text-gray-700">{{ t.pidLabel }}</label><input v-model="currentEdit.pid" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></div>
+        <div><label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.pidLabel }}</label><input v-model="currentEdit.pid" type="text" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"></div>
         <div class="relative">
-            <label class="block text-sm font-medium text-gray-700">{{ t.errorLabel }}</label>
-            <input v-model="currentEdit.error" type="text" list="common-errors" @focus="showErrorSuggestions = true" @blur="hideErrorSuggestions" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-              <div v-if="errorSuggestions.length > 0 && showErrorSuggestions" class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.errorLabel }}</label>
+            <input v-model="currentEdit.error" type="text" list="common-errors" @focus="showErrorSuggestions = true" @blur="hideErrorSuggestions" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+              <div v-if="errorSuggestions.length > 0 && showErrorSuggestions" class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg dark:bg-gray-700 dark:border-gray-600">
                 <ul class="max-h-40 overflow-auto">
-                    <li v-for="solution in errorSuggestions" :key="solution.id" @click="showSolution(solution)" class="px-3 py-2 cursor-pointer hover:bg-gray-100 text-sm">
+                    <li v-for="solution in errorSuggestions" :key="solution.id" @click="showSolution(solution)" class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 text-sm">
                         {{ solution.title }}
                     </li>
                 </ul>
             </div>
         </div>
-        <div><label class="block text-sm font-medium text-gray-700">{{ t.statusLabel }}</label><select v-model="currentEdit.status" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"><option>{{ t.statusOpen }}</option><option>{{ t.statusInProgress }}</option><option>{{ t.statusCompleted }}</option><option>{{ t.statusCompletedAtCustomer }}</option></select></div>
-        <div><label class="block text-sm font-medium text-gray-700">{{ t.assignTechnicianLabel }}</label><select v-model="currentEdit.techniker" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"><option value="">{{ t.noOne }}</option><option v-for="techniker in technikerList" :key="techniker" :value="techniker">{{ techniker }}</option></select></div>
+        <div><label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.statusLabel }}</label><select v-model="currentEdit.status" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"><option>{{ t.statusOpen }}</option><option>{{ t.statusInProgress }}</option><option>{{ t.statusCompleted }}</option><option>{{ t.statusCompletedAtCustomer }}</option></select></div>
+        <div><label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.assignTechnicianLabel }}</label><select v-model="currentEdit.techniker" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"><option value="">{{ t.noOne }}</option><option v-for="techniker in technikerList" :key="techniker" :value="techniker">{{ techniker }}</option></select></div>
       </div>
       
-      <hr class="my-6">
+      <hr class="my-6 dark:border-gray-700">
+      
+      <!-- Comment History -->
       <div class="mt-4">
-        <h4 class="text-md font-semibold text-gray-800 mb-2">{{ t.commentHistory }}</h4>
-        <div class="bg-gray-50 p-3 rounded-md max-h-48 overflow-y-auto mb-3 space-y-3">
+        <h4 class="text-md font-semibold text-gray-800 dark:text-gray-200 mb-2">{{ t.commentHistory }}</h4>
+        <div class="bg-gray-50 p-3 rounded-md max-h-48 overflow-y-auto mb-3 space-y-3 dark:bg-gray-800">
           <div v-for="comment in sortedComments(currentEdit.comments)" :key="comment.timestamp">
-            <p :class="{'system-comment': comment.isSystem}" class="text-sm text-gray-700">{{ comment.text }}</p>
-            <p class="text-xs text-gray-500 text-right">- {{ comment.user }} am {{ formatTimestamp(comment.timestamp) }}</p>
+            <p :class="{'system-comment': comment.isSystem}" class="text-sm text-gray-700 dark:text-gray-300">{{ comment.text }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 text-right">- {{ comment.user }} am {{ formatTimestamp(comment.timestamp) }}</p>
           </div>
-          <p v-if="!currentEdit.comments || currentEdit.comments.length === 0" class="text-sm text-gray-500">{{ t.noCommentsYet }}</p>
+          <p v-if="!currentEdit.comments || currentEdit.comments.length === 0" class="text-sm text-gray-500 dark:text-gray-400">{{ t.noCommentsYet }}</p>
         </div>
-        <textarea v-model="newCommentText" rows="2" :placeholder="t.addCommentPlaceholder" class="block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
+        <textarea v-model="newCommentText" rows="2" :placeholder="t.addCommentPlaceholder" class="block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"></textarea>
         <button @click="addComment" class="mt-2 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md text-sm">{{ t.addCommentButton }}</button>
       </div>
+
+      <!-- NEU: Photo Upload (Vorbereitung) -->
+      <div class="mt-6">
+          <h4 class="text-md font-semibold text-gray-800 dark:text-gray-200 mb-2">Anhänge</h4>
+          <div class="bg-gray-50 p-3 rounded-md dark:bg-gray-800">
+              <ul v-if="currentEdit.attachments && currentEdit.attachments.length > 0" class="attachment-list space-y-2 mb-3">
+                  <li v-for="(file, index) in currentEdit.attachments" :key="index" class="flex items-center justify-between text-sm">
+                      <a :href="file.url" target="_blank" class="text-indigo-600 hover:underline dark:text-indigo-400">{{ file.name }}</a>
+                      <button @click="deleteAttachment(index)" class="text-red-500 hover:text-red-700 ml-4">&times;</button>
+                  </li>
+              </ul>
+              <div class="mt-2">
+                  <label class="text-sm text-gray-600 dark:text-gray-400">Neue Datei hinzufügen:</label>
+                  <input type="file" @change="handleFileSelect" multiple class="mt-1 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 dark:file:bg-gray-600 dark:file:text-gray-200 dark:hover:file:bg-gray-500"/>
+              </div>
+              <div v-if="uploadProgress.active" class="mt-2">
+                  <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                      <div class="bg-indigo-600 h-2.5 rounded-full" :style="{ width: uploadProgress.percent + '%' }"></div>
+                  </div>
+                  <p class="text-xs text-center mt-1">{{ uploadProgress.text }}</p>
+              </div>
+          </div>
+      </div>
+      
       <div class="mt-6 flex justify-between">
         <button @click="exportPDF(currentEdit)" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-md">{{ t.exportPdfButton }}</button>
         <div class="space-x-3">
-          <button @click="showEditModal = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">{{ t.cancelButton }}</button>
+          <button @click="showEditModal = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">{{ t.cancelButton }}</button>
           <button @click="saveEdit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md">{{ t.saveButton }}</button>
         </div>
       </div>
@@ -423,86 +462,86 @@
   <!-- House Management Modal -->
   <div v-if="showHouseManagement" class="modal-backdrop">
     <div class="modal-content">
-      <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">{{ t.manageHouses }}</h3>
+      <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 mb-4">{{ t.manageHouses }}</h3>
       <div class="mb-4">
-        <input v-model="newHouseName" @keyup.enter="addHouse" type="text" :placeholder="t.newHouseNamePlaceholder" class="p-2 border rounded w-full">
+        <input v-model="newHouseName" @keyup.enter="addHouse" type="text" :placeholder="t.newHouseNamePlaceholder" class="p-2 border rounded w-full dark:bg-gray-800 dark:border-gray-600">
         <button @click="addHouse" class="mt-2 bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700">{{ t.addButton }}</button>
       </div>
-      <ul><li v-for="house in houses" :key="house" class="flex justify-between items-center p-2 border-b"><span>{{ house }}</span><button @click="confirmDelete('house', house)" class="text-red-500 hover:text-red-700 text-sm">{{ t.deleteButton }}</button></li></ul>
-      <div class="mt-6 flex justify-end"><button @click="showHouseManagement = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">{{ t.closeButton }}</button></div>
+      <ul><li v-for="house in houses" :key="house" class="flex justify-between items-center p-2 border-b dark:border-gray-700"><span>{{ house }}</span><button @click="confirmDelete('house', house)" class="text-red-500 hover:text-red-700 text-sm">{{ t.deleteButton }}</button></li></ul>
+      <div class="mt-6 flex justify-end"><button @click="showHouseManagement = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">{{ t.closeButton }}</button></div>
     </div>
   </div>
   
   <!-- Techniker Management Modal -->
   <div v-if="showTechnikerManagement" class="modal-backdrop">
     <div class="modal-content">
-      <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">{{ t.manageTechnicians }}</h3>
+      <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 mb-4">{{ t.manageTechnicians }}</h3>
       <div class="mb-4">
-        <input v-model="newTechnicianName" @keyup.enter="addTechnician" type="text" :placeholder="t.newTechnicianNamePlaceholder" class="p-2 border rounded w-full">
+        <input v-model="newTechnicianName" @keyup.enter="addTechnician" type="text" :placeholder="t.newTechnicianNamePlaceholder" class="p-2 border rounded w-full dark:bg-gray-800 dark:border-gray-600">
         <button @click="addTechnician" class="mt-2 bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700">{{ t.addButton }}</button>
       </div>
-      <ul><li v-for="techniker in technikerList" :key="techniker" class="flex justify-between items-center p-2 border-b"><span>{{ techniker }}</span><button @click="confirmDelete('technician', techniker)" class="text-red-500 hover:text-red-700 text-sm">{{ t.deleteButton }}</button></li></ul>
-      <div class="mt-6 flex justify-end"><button @click="showTechnikerManagement = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">{{ t.closeButton }}</button></div>
+      <ul><li v-for="techniker in technikerList" :key="techniker" class="flex justify-between items-center p-2 border-b dark:border-gray-700"><span>{{ techniker }}</span><button @click="confirmDelete('technician', techniker)" class="text-red-500 hover:text-red-700 text-sm">{{ t.deleteButton }}</button></li></ul>
+      <div class="mt-6 flex justify-end"><button @click="showTechnikerManagement = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">{{ t.closeButton }}</button></div>
     </div>
   </div>
     
   <!-- Fehler Management Modal -->
   <div v-if="showFehlerManagement" class="modal-backdrop">
     <div class="modal-content">
-      <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">{{ t.manageErrors }}</h3>
+      <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 mb-4">{{ t.manageErrors }}</h3>
       <div class="mb-4">
-        <input v-model="newCommonError" @keyup.enter="addCommonError" type="text" :placeholder="t.newErrorPlaceholder" class="p-2 border rounded w-full">
+        <input v-model="newCommonError" @keyup.enter="addCommonError" type="text" :placeholder="t.newErrorPlaceholder" class="p-2 border rounded w-full dark:bg-gray-800 dark:border-gray-600">
         <button @click="addCommonError" class="mt-2 bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700">{{ t.addButton }}</button>
       </div>
-      <ul><li v-for="error in commonErrors" :key="error" class="flex justify-between items-center p-2 border-b"><span>{{ error }}</span><button @click="confirmDelete('commonError', error)" class="text-red-500 hover:text-red-700 text-sm">{{ t.deleteButton }}</button></li></ul>
-      <div class="mt-6 flex justify-end"><button @click="showFehlerManagement = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">{{ t.closeButton }}</button></div>
+      <ul><li v-for="error in commonErrors" :key="error" class="flex justify-between items-center p-2 border-b dark:border-gray-700"><span>{{ error }}</span><button @click="confirmDelete('commonError', error)" class="text-red-500 hover:text-red-700 text-sm">{{ t.deleteButton }}</button></li></ul>
+      <div class="mt-6 flex justify-end"><button @click="showFehlerManagement = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">{{ t.closeButton }}</button></div>
     </div>
   </div>
 
    <!-- User Management Modal -->
   <div v-if="showUserManagement" class="modal-backdrop">
     <div class="modal-content">
-      <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">{{ t.manageUsers }}</h3>
+      <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 mb-4">{{ t.manageUsers }}</h3>
       
-        <div class="mb-6 p-4 border rounded-md">
+        <div class="mb-6 p-4 border rounded-md dark:border-gray-700">
         <h4 class="font-semibold mb-2">{{ newUser.id ? 'Benutzer bearbeiten' : 'Neuen Benutzer hinzufügen' }}</h4>
         <form @submit.prevent="saveUserRole">
-          <input v-model="newUser.email" type="email" placeholder="E-Mail des Benutzers" required class="block w-full mb-2 p-2 border rounded">
-          <input v-model="newUser.technicianName" type="text" placeholder="Technikername (optional, muss exakt übereinstimmen)" class="block w-full mb-2 p-2 border rounded">
-          <div class="flex items-center mb-2"><input v-model="newUser.isAdmin" type="checkbox" id="isAdmin" class="h-4 w-4 text-indigo-600 border-gray-300 rounded"><label for="isAdmin" class="ml-2 block text-sm text-gray-900">Ist Administrator?</label></div>
+          <input v-model="newUser.email" type="email" placeholder="E-Mail des Benutzers" required class="block w-full mb-2 p-2 border rounded dark:bg-gray-800 dark:border-gray-600">
+          <input v-model="newUser.technicianName" type="text" placeholder="Technikername (optional, muss exakt übereinstimmen)" class="block w-full mb-2 p-2 border rounded dark:bg-gray-800 dark:border-gray-600">
+          <div class="flex items-center mb-2"><input v-model="newUser.isAdmin" type="checkbox" id="isAdmin" class="h-4 w-4 text-indigo-600 border-gray-300 rounded dark:bg-gray-600"><label for="isAdmin" class="ml-2 block text-sm text-gray-900 dark:text-gray-300">Ist Administrator?</label></div>
           <button type="submit" class="bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700">Speichern</button>
-            <button v-if="newUser.id" @click="resetUserForm" type="button" class="ml-2 bg-gray-200 text-gray-800 py-2 px-4 rounded hover:bg-gray-300">Abbrechen</button>
+            <button v-if="newUser.id" @click="resetUserForm" type="button" class="ml-2 bg-gray-200 text-gray-800 py-2 px-4 rounded hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">Abbrechen</button>
         </form>
       </div>
 
       <div>
         <h4 class="font-semibold mb-2">{{ t.existingUsers }}</h4>
-        <ul class="max-h-60 overflow-y-auto border rounded-md divide-y"><li v-for="user in userList" :key="user.id" class="flex justify-between items-center p-2">
+        <ul class="max-h-60 overflow-y-auto border rounded-md divide-y dark:border-gray-700 dark:divide-gray-700"><li v-for="user in userList" :key="user.id" class="flex justify-between items-center p-2">
           <div>
-            <p>{{ user.email }} <span v-if="user.isAdmin" class="text-xs text-green-600 font-semibold">(Admin)</span></p>
-            <p v-if="user.technicianName" class="text-xs text-gray-500">Techniker: {{ user.technicianName }}</p>
+            <p>{{ user.email }} <span v-if="user.isAdmin" class="text-xs text-green-600 dark:text-green-400 font-semibold">(Admin)</span></p>
+            <p v-if="user.technicianName" class="text-xs text-gray-500 dark:text-gray-400">Techniker: {{ user.technicianName }}</p>
           </div>
           <div>
-            <button @click="editUser(user)" class="text-indigo-600 hover:text-indigo-800 text-sm mr-4">{{ t.editButton }}</button>
-            <button @click="confirmDelete('user', user)" class="text-red-500 hover:text-red-700 text-sm">{{ t.deleteButton }}</button>
+            <button @click="editUser(user)" class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 text-sm mr-4">{{ t.editButton }}</button>
+            <button @click="confirmDelete('user', user)" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-sm">{{ t.deleteButton }}</button>
           </div>
         </li></ul>
       </div>
-      <div class="mt-6 flex justify-end"><button @click="showUserManagement = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">{{ t.closeButton }}</button></div>
+      <div class="mt-6 flex justify-end"><button @click="showUserManagement = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">{{ t.closeButton }}</button></div>
     </div>
   </div>
 
     <!-- KNOWLEDGE BASE MODALS (ADD/EDIT & VIEW) -->
   <div v-if="showKnowledgeBaseManagement" class="modal-backdrop">
     <div class="modal-content">
-        <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">{{ t.manageKnowledgeBase }}</h3>
+        <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 mb-4">{{ t.manageKnowledgeBase }}</h3>
         <!-- Form to Add/Edit Solution -->
-        <div class="p-4 border rounded-md mb-6">
+        <div class="p-4 border rounded-md mb-6 dark:border-gray-700">
             <h4 class="font-semibold mb-2">{{ newSolution.id ? t.editSolution : t.newSolution }}</h4>
             <div class="space-y-4">
-                <input v-model="newSolution.title" type="text" :placeholder="t.solutionTitle" class="p-2 border rounded w-full">
-                <textarea v-model="newSolution.content" rows="4" :placeholder="t.solutionContent" class="p-2 border rounded w-full"></textarea>
-                <input v-model="newSolution.relatedErrors" type="text" :placeholder="t.relatedErrorsPlaceholder" class="p-2 border rounded w-full">
+                <input v-model="newSolution.title" type="text" :placeholder="t.solutionTitle" class="p-2 border rounded w-full dark:bg-gray-800 dark:border-gray-600">
+                <textarea v-model="newSolution.content" rows="4" :placeholder="t.solutionContent" class="p-2 border rounded w-full dark:bg-gray-800 dark:border-gray-600"></textarea>
+                <input v-model="newSolution.relatedErrors" type="text" :placeholder="t.relatedErrorsPlaceholder" class="p-2 border rounded w-full dark:bg-gray-800 dark:border-gray-600">
             </div>
             <div class="mt-4">
                 <button @click="saveSolution" class="bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700 text-sm">{{ t.saveSolution }}</button>
@@ -512,32 +551,32 @@
         <!-- List of Existing Solutions -->
         <div>
             <h4 class="font-semibold mb-2">{{ t.knowledgeBase }}</h4>
-            <ul class="max-h-60 overflow-y-auto border rounded-md divide-y">
+            <ul class="max-h-60 overflow-y-auto border rounded-md divide-y dark:border-gray-700 dark:divide-gray-700">
                 <li v-for="solution in knowledgeBase" :key="solution.id" class="p-3 flex justify-between items-center">
                     <span class="font-semibold">{{ solution.title }}</span>
                     <div class="space-x-2">
-                        <button @click="editSolution(solution)" class="text-indigo-600 hover:text-indigo-800 text-sm">{{ t.editButton }}</button>
-                        <button @click="confirmDelete('knowledgeBase', solution)" class="text-red-500 hover:text-red-700 text-sm">{{ t.deleteButton }}</button>
+                        <button @click="editSolution(solution)" class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 text-sm">{{ t.editButton }}</button>
+                        <button @click="confirmDelete('knowledgeBase', solution)" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-sm">{{ t.deleteButton }}</button>
                     </div>
                 </li>
-                 <li v-if="knowledgeBase.length === 0" class="p-3 text-sm text-gray-500">{{ t.noSolutionsFound }}</li>
+                 <li v-if="knowledgeBase.length === 0" class="p-3 text-sm text-gray-500 dark:text-gray-400">{{ t.noSolutionsFound }}</li>
             </ul>
         </div>
         <div class="mt-6 flex justify-end">
-            <button @click="showKnowledgeBaseManagement = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">{{ t.closeButton }}</button>
+            <button @click="showKnowledgeBaseManagement = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">{{ t.closeButton }}</button>
         </div>
     </div>
   </div>
 
   <div v-if="showSolutionModal" class="modal-backdrop">
     <div class="modal-content">
-        <h3 class="text-lg leading-6 font-medium text-gray-900 mb-2">{{ currentSolution.title }}</h3>
-        <p class="text-sm text-gray-500 mb-4">{{ t.relatedErrors }}: {{ currentSolution.relatedErrors }}</p>
-        <div class="p-3 bg-gray-50 rounded-md max-h-80 overflow-y-auto border">
-            <pre class="whitespace-pre-wrap text-sm text-gray-800">{{ currentSolution.content }}</pre>
+        <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 mb-2">{{ currentSolution.title }}</h3>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">{{ t.relatedErrors }}: {{ currentSolution.relatedErrors }}</p>
+        <div class="p-3 bg-gray-50 rounded-md max-h-80 overflow-y-auto border dark:bg-gray-800 dark:border-gray-700">
+            <pre class="whitespace-pre-wrap text-sm text-gray-800 dark:text-gray-200">{{ currentSolution.content }}</pre>
         </div>
         <div class="mt-6 flex justify-end">
-            <button @click="showSolutionModal = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">{{ t.closeButton }}</button>
+            <button @click="showSolutionModal = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">{{ t.closeButton }}</button>
         </div>
     </div>
   </div>
@@ -545,54 +584,54 @@
     <!-- QR Code Management Modal -->
     <div v-if="showQrCodeManagement" class="modal-backdrop">
         <div class="modal-content">
-            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">{{ t.manageQrCodes }}</h3>
-            <div class="p-4 border rounded-md mb-6">
+            <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 mb-4">{{ t.manageQrCodes }}</h3>
+            <div class="p-4 border rounded-md mb-6 dark:border-gray-700">
                 <h4 class="font-semibold mb-2">{{ currentPattern.id ? t.editPatternTitle : t.newPatternTitle }}</h4>
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ t.patternNameLabel }}</label>
-                        <input v-model="currentPattern.name" type="text" :placeholder="t.patternNamePlaceholder" class="mt-1 p-2 border rounded w-full">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.patternNameLabel }}</label>
+                        <input v-model="currentPattern.name" type="text" :placeholder="t.patternNamePlaceholder" class="mt-1 p-2 border rounded w-full dark:bg-gray-800 dark:border-gray-600">
                     </div>
                      <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ t.deviceNameLabel }}</label>
-                        <input v-model="currentPattern.deviceName" type="text" :placeholder="t.deviceNamePlaceholder" class="mt-1 p-2 border rounded w-full">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.deviceNameLabel }}</label>
+                        <input v-model="currentPattern.deviceName" type="text" :placeholder="t.deviceNamePlaceholder" class="mt-1 p-2 border rounded w-full dark:bg-gray-800 dark:border-gray-600">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ t.exampleQrLabel }}</label>
-                        <textarea v-model="currentPattern.example" @input="updatePreviewFromExample" rows="4" :placeholder="t.exampleQrPlaceholder" class="mt-1 p-2 border rounded w-full font-mono"></textarea>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.exampleQrLabel }}</label>
+                        <textarea v-model="currentPattern.example" @input="updatePreviewFromExample" rows="4" :placeholder="t.exampleQrPlaceholder" class="mt-1 p-2 border rounded w-full font-mono dark:bg-gray-800 dark:border-gray-600"></textarea>
                     </div>
                     <div v-if="Object.keys(currentPattern.parts).length > 0">
                         <h5 class="font-semibold text-sm mb-2">{{ t.previewTitle }}</h5>
-                        <div class="bg-gray-50 p-3 rounded-md text-sm space-y-2">
+                        <div class="bg-gray-50 p-3 rounded-md text-sm space-y-2 dark:bg-gray-900/50">
                              <div v-for="(field, key) in qrFields" :key="key">
-                                <label class="block text-xs font-medium text-gray-500">{{ field.label }}</label>
-                                <input v-model="currentPattern.parts[key]" type="text" class="mt-1 p-1 border rounded w-full font-mono text-xs">
+                                <label class="block text-xs font-medium text-gray-500 dark:text-gray-400">{{ field.label }}</label>
+                                <input v-model="currentPattern.parts[key]" type="text" class="mt-1 p-1 border rounded w-full font-mono text-xs dark:bg-gray-800 dark:border-gray-600">
                              </div>
                         </div>
                     </div>
                 </div>
                 <div class="mt-4 space-x-2">
                     <button @click="savePattern" class="bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700 text-sm">{{ t.savePatternButton }}</button>
-                    <button v-if="currentPattern.id" @click="resetPatternForm" class="bg-gray-200 text-gray-800 py-2 px-4 rounded hover:bg-gray-300 text-sm">{{ t.cancelEditButton }}</button>
+                    <button v-if="currentPattern.id" @click="resetPatternForm" class="bg-gray-200 text-gray-800 py-2 px-4 rounded hover:bg-gray-300 text-sm dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">{{ t.cancelEditButton }}</button>
                 </div>
             </div>
             <div>
                 <h4 class="font-semibold mb-2">{{ t.existingPatternsTitle }}</h4>
-                <ul class="max-h-60 overflow-y-auto border rounded-md divide-y">
+                <ul class="max-h-60 overflow-y-auto border rounded-md divide-y dark:border-gray-700 dark:divide-gray-700">
                     <li v-for="pattern in qrCodePatterns" :key="pattern.id" class="p-3 flex justify-between items-center">
                         <div>
-                            <p class="font-semibold">{{ pattern.name }} <span class="text-xs text-gray-500">({{pattern.deviceName}})</span></p>
+                            <p class="font-semibold">{{ pattern.name }} <span class="text-xs text-gray-500 dark:text-gray-400">({{pattern.deviceName}})</span></p>
                         </div>
                         <div class="space-x-2">
-                            <button @click="editPattern(pattern)" class="text-indigo-600 hover:text-indigo-800 text-sm">{{ t.editButton }}</button>
-                            <button @click="confirmDelete('qrPattern', pattern)" class="text-red-500 hover:text-red-700 text-sm">{{ t.deleteButton }}</button>
+                            <button @click="editPattern(pattern)" class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 text-sm">{{ t.editButton }}</button>
+                            <button @click="confirmDelete('qrPattern', pattern)" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-sm">{{ t.deleteButton }}</button>
                         </div>
                     </li>
-                     <li v-if="qrCodePatterns.length === 0" class="p-3 text-sm text-gray-500">{{ t.noPatternsInfo }}</li>
+                     <li v-if="qrCodePatterns.length === 0" class="p-3 text-sm text-gray-500 dark:text-gray-400">{{ t.noPatternsInfo }}</li>
                 </ul>
             </div>
             <div class="mt-6 flex justify-end">
-                <button @click="showQrCodeManagement = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">{{ t.closeButton }}</button>
+                <button @click="showQrCodeManagement = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">{{ t.closeButton }}</button>
             </div>
         </div>
     </div>
@@ -601,13 +640,13 @@
   <!-- Confirmation Modal -->
   <div v-if="showConfirmModal" class="modal-backdrop">
     <div class="modal-content max-w-sm">
-        <h3 class="text-lg font-medium text-gray-900">{{ t.confirmAction }}</h3>
-        <p class="mt-2 text-sm text-gray-600">{{ confirmMessage }}</p>
+        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">{{ t.confirmAction }}</h3>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">{{ confirmMessage }}</p>
         <div class="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
             <button @click="executeConfirm" type="button" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none sm:col-start-2 sm:text-sm">
                 {{ t.deleteButton }}
             </button>
-            <button @click="cancelConfirm" type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:col-start-1 sm:text-sm">
+            <button @click="cancelConfirm" type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:col-start-1 sm:text-sm dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 dark:border-gray-500">
                 {{ t.cancelButton }}
             </button>
         </div>
@@ -617,23 +656,23 @@
   <!-- Email Generation Modal -->
   <div v-if="showEmailModal" class="modal-backdrop">
     <div class="modal-content">
-      <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">{{ t.emailGenerationTitle }}</h3>
-      <p class="text-sm text-gray-600 mb-4">{{ t.emailGenerationInfo }}</p>
-      <textarea readonly class="w-full h-64 p-2 border rounded font-mono text-sm bg-gray-50">{{ generatedEmailContent }}</textarea>
+      <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 mb-4">{{ t.emailGenerationTitle }}</h3>
+      <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">{{ t.emailGenerationInfo }}</p>
+      <textarea readonly class="w-full h-64 p-2 border rounded font-mono text-sm bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300">{{ generatedEmailContent }}</textarea>
       <div class="mt-6 flex justify-between">
         <button @click="copyToClipboard(generatedEmailContent)" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md">{{ t.copyTextButton }}</button>
-        <button @click="showEmailModal = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">{{ t.closeButton }}</button>
+        <button @click="showEmailModal = false" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">{{ t.closeButton }}</button>
       </div>
     </div>
   </div>
 
-  <!-- NEU: Modal für den Kamera-Scanner -->
+  <!-- Modal für den Kamera-Scanner -->
   <div v-if="isScannerActive" class="modal-backdrop" @click.self="stopScanner">
     <div class="modal-content max-w-lg w-full">
-      <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">QR-Code scannen</h3>
+      <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 mb-4">QR-Code scannen</h3>
       <div id="qr-reader" class="w-full"></div>
       <div class="mt-4 flex justify-end">
-        <button @click="stopScanner" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md">{{ t.closeButton }}</button>
+        <button @click="stopScanner" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">{{ t.closeButton }}</button>
       </div>
     </div>
   </div>
@@ -699,7 +738,7 @@
   const appConfig = {
     data() {
       return {
-        version: '1.75',
+        version: '1.80',
         isAuthReady: false,
         user: { loggedIn: false, email: null, uid: null, isAdmin: false, technicianName: null },
         loginForm: { email: '', password: '', error: '' },
@@ -768,148 +807,51 @@
 
         notifications: [],
         
-        // NEU: Status für den Kamera-Scanner
         isScannerActive: false,
         html5QrCode: null,
+        isDarkMode: false,
         
-        // Dashboard
         allRepairsForStats: [],
-        charts: {
-            status: null,
-            errors: null,
-            houses: null
-        },
+        charts: { status: null, errors: null, houses: null },
 
-        // Internationalization (i18n)
-        currentLanguage: 'de',
         isOnline: navigator.onLine,
         isFullscreen: false,
         translations: {
             de: {
-                mainTitle: "Reparatur Manager",
-                repairs: "Reparaturen",
-                myRepairs: "Meine Reparaturen",
-                dashboard: "Dashboard",
-                administration: "Verwaltung",
-                users: "Benutzer",
-                technicians: "Techniker",
-                manageHouses: "Häuser verwalten",
-                manageErrors: "Fehler verwalten",
-                manageKnowledgeBase: "Wissensbasis verwalten",
-                manageQrCodes: "Geräte & QR-Codes verwalten",
-                loggedInAs: "Angemeldet als",
-                newRepairEntry: "Neuer Reparatur-Eintrag",
-                houseLabel: "Haus",
-                capturedAtLabel: "Erfasst am",
-                dateLabel: "Datum",
-                deviceLabel: "Gerät",
-                engagementLabel: "Fiche d'engagement",
-                ipeiLabel: "IPEI",
-                pidLabel: "P-ID",
-                errorLabel: "Fehler",
-                statusLabel: "Status",
-                assignTechnicianLabel: "Techniker zuweisen",
-                qrCodeLabel: "Barcode / QR-Code",
-                scanPlaceholder: "Hier scannen oder einfügen...",
-                addButton: "Hinzufügen",
-                houseFilterLabel: "Haus:",
-                technicianFilterLabel: "Techniker:",
-                statusFilterLabel: "Status:",
-                all: "Alle",
-                searchLabel: "Suche:",
-                searchPlaceholder: "Suchen...",
+                mainTitle: "Reparatur Manager", repairs: "Reparaturen", myRepairs: "Meine Reparaturen", dashboard: "Dashboard", administration: "Verwaltung",
+                users: "Benutzer", technicians: "Techniker", manageHouses: "Häuser verwalten", manageErrors: "Fehler verwalten", manageKnowledgeBase: "Wissensbasis verwalten",
+                manageQrCodes: "Geräte & QR-Codes verwalten", loggedInAs: "Angemeldet als", newRepairEntry: "Neuer Reparatur-Eintrag", houseLabel: "Haus", capturedAtLabel: "Erfasst am",
+                dateLabel: "Datum", deviceLabel: "Gerät", engagementLabel: "Fiche d'engagement", ipeiLabel: "IPEI", pidLabel: "P-ID", errorLabel: "Fehler", statusLabel: "Status",
+                assignTechnicianLabel: "Techniker zuweisen", qrCodeLabel: "Barcode / QR-Code", scanPlaceholder: "Hier scannen oder einfügen...", addButton: "Hinzufügen",
+                houseFilterLabel: "Haus:", technicianFilterLabel: "Techniker:", statusFilterLabel: "Status:", all: "Alle", searchLabel: "Suche:", searchPlaceholder: "Suchen...",
                 tableHeaders: { house: 'Haus', captured_at: 'Erfasst am', fiche: 'Gerät', error: 'Fehler', ipei: 'IPEI', status: 'Status', techniker: 'Techniker' },
-                actions: "Aktionen",
-                editButton: "Bearbeiten",
-                deleteButton: "Löschen",
-                statusOpen: "Offen",
-                statusInProgress: "In Bearbeitung",
-                statusCompleted: "Abgeschlossen",
-                statusCompletedAtCustomer: "Beim Kunden repariert",
-                noOne: "Niemand",
-                statusDistribution: "Status Verteilung",
-                openCases: "Offene Fälle",
-                casesPerHouse: "Fälle pro Haus",
-                mostCommonErrors: "Häufigste Fehler",
-                editEntry: "Eintrag bearbeiten",
-                commentHistory: "Historie & Kommentare",
-                noCommentsYet: "Noch keine Kommentare.",
-                addCommentPlaceholder: "Neuen Kommentar hinzufügen...",
-                addCommentButton: "Kommentar hinzufügen",
-                cancelButton: "Abbrechen",
-                saveButton: "Speichern",
-                exportPdfButton: "PDF Exportieren",
-                closeButton: "Schließen",
-                newHouseNamePlaceholder: "Neuen Hausnamen eingeben",
-                newErrorPlaceholder: "Neuen Fehlertext eingeben",
-                manageTechnicians: "Techniker verwalten",
-                newTechnicianNamePlaceholder: "Neuen Techniker eingeben",
-                confirmAction: "Aktion bestätigen",
-                notifRepairAdded: "Reparatur erfolgreich hinzugefügt.",
-                notifConfirmDelete: (item) => `Möchten Sie den Reparatureintrag für "${item}" wirklich löschen?`,
-                notifHousesLoading: 'Häuser werden noch geladen, bitte warten.',
-                notifFillHouseAndDevice: 'Bitte Haus und Gerät ausfüllen.',
+                actions: "Aktionen", editButton: "Bearbeiten", deleteButton: "Löschen", statusOpen: "Offen", statusInProgress: "In Bearbeitung", statusCompleted: "Abgeschlossen",
+                statusCompletedAtCustomer: "Beim Kunden repariert", noOne: "Niemand", totalRepairs: "Reparaturen Gesamt", openCases: "Offene Fälle", statusDistribution: "Status Verteilung", casesPerHouse: "Fälle pro Haus",
+                mostCommonErrors: "Häufigste Fehler", editEntry: "Eintrag bearbeiten", commentHistory: "Historie & Kommentare", noCommentsYet: "Noch keine Kommentare.",
+                addCommentPlaceholder: "Neuen Kommentar hinzufügen...", addCommentButton: "Kommentar hinzufügen", cancelButton: "Abbrechen", saveButton: "Speichern",
+                exportPdfButton: "PDF Exportieren", closeButton: "Schließen", newHouseNamePlaceholder: "Neuen Hausnamen eingeben", newErrorPlaceholder: "Neuen Fehlertext eingeben",
+                manageTechnicians: "Techniker verwalten", newTechnicianNamePlaceholder: "Neuen Techniker eingeben", confirmAction: "Aktion bestätigen",
+                notifRepairAdded: "Reparatur erfolgreich hinzugefügt.", notifConfirmDelete: (item) => `Möchten Sie den Reparatureintrag für "${item}" wirklich löschen?`,
+                notifHousesLoading: 'Häuser werden noch geladen, bitte warten.', notifFillHouseAndDevice: 'Bitte Haus und Gerät ausfüllen.',
                 notifUnsavedComment: 'Sie haben einen Kommentar geschrieben, aber nicht hinzugefügt. Bitte klicken Sie zuerst auf "Kommentar hinzufügen".',
-                notifChangesSaved: 'Änderungen gespeichert.',
-                notifEntryDeleted: 'Eintrag gelöscht.',
-                notifDeleteError: 'Fehler: Eintrag konnte nicht gelöscht werden.',
-                notifQrSuccess: 'Code erfolgreich verarbeitet!',
-                notifQrError: 'Code konnte keinem Muster zugeordnet werden.',
-                notifCommentEmpty: 'Kommentar darf nicht leer sein.',
-                notifNowOnline: 'Sie sind wieder online. Daten werden synchronisiert.',
-                notifNowOffline: 'Sie sind jetzt offline. Änderungen werden lokal gespeichert.',
-                enterFullscreen: "Vollbildmodus",
-                exitFullscreen: "Vollbildmodus beenden",
-                bulkEditSelected: "Einträge ausgewählt.",
-                bulkEditAssignTechnician: "Techniker zuweisen:",
-                bulkEditChangeStatus: "Status ändern:",
-                bulkEditApplyButton: "Anwenden",
-                noChange: "Keine Änderung",
-                notifBulkUpdateSuccess: (count) => `${count} Einträge erfolgreich aktualisiert.`,
-                notifBulkUpdateError: "Fehler bei der Massenbearbeitung.",
-                ipeiHistoryFound: "gesehen",
-                ipeiHistoryTooltip: (count) => `Diese IPEI wurde bereits in ${count} anderen Einträgen gefunden. Klicken um die Historie anzuzeigen.`,
-                generateEmailButton: "E-Mail generieren",
-                emailGenerationTitle: "E-Mail Inhalt generieren",
-                emailGenerationInfo: "Der folgende Text wurde generiert. Kopieren Sie ihn und fügen Sie ihn in Ihr E-Mail-Programm ein.",
-                copyTextButton: "Text kopieren",
-                copySuccess: "Text in die Zwischenablage kopiert!",
-                copyError: "Fehler beim Kopieren.",
-                emailGreeting: "Guten Tag,",
-                emailClosing: "Freundliche Grüsse",
-                loginButton: "Anmelden",
-                logoutButton: "Abmelden",
-                emailPlaceholder: "E-Mail-Adresse",
-                passwordPlaceholder: "Passwort",
-                loginError: "E-Mail oder Passwort ist falsch.",
-                knowledgeBase: "Wissensbasis",
-                solutionTitle: "Titel der Lösung",
-                solutionContent: "Inhalt / Anleitung",
-                relatedErrors: "Zugehörige Fehler (durch Komma getrennt)",
-                relatedErrorsPlaceholder: "z.B. E-102, Error 102, Rotes Licht",
-                newSolution: "Neuer Lösungsartikel",
-                editSolution: "Lösungsartikel bearbeiten",
-                saveSolution: "Lösung speichern",
-                solution: "Lösung",
-                noSolutionsFound: "Keine Lösungen gefunden.",
-                patternNameLabel: "Name des Musters",
-                patternNamePlaceholder: "z.B. 'Lange Etikette V1'",
-                exampleQrPlaceholder: "Hier den kompletten Inhalt eines echten QR-Codes einfügen...",
-                deviceNameLabel: "Gerätename (optional)",
-                deviceNamePlaceholder: "z.B. 'CH-7722 TIPTEL'",
-                previewTitle: "Automatisch erkannte Daten (kann korrigiert werden):",
-                savePatternButton: "Muster speichern",
-                cancelEditButton: "Bearbeitung abbrechen",
-                existingPatternsTitle: "Gespeicherte Muster",
-                noPatternsInfo: "Noch keine Muster erstellt.",
-                dataCorrection: "Datenbank-Korrektur",
-                confirmDataFix: "Möchten Sie alle 'Micro'-Fehler zu 'Micro rauschen' korrigieren? Dies kann nicht rückgängig gemacht werden.",
-                dataFixSuccess: "Datenkorrektur erfolgreich.",
-                dataFixError: "Fehler bei der Datenkorrektur.",
+                notifChangesSaved: 'Änderungen gespeichert.', notifEntryDeleted: 'Eintrag gelöscht.', notifDeleteError: 'Fehler: Eintrag konnte nicht gelöscht werden.',
+                notifQrSuccess: 'Code erfolgreich verarbeitet!', notifQrError: 'Code konnte keinem Muster zugeordnet werden.', notifCommentEmpty: 'Kommentar darf nicht leer sein.',
+                notifNowOnline: 'Sie sind wieder online. Daten werden synchronisiert.', notifNowOffline: 'Sie sind jetzt offline. Änderungen werden lokal gespeichert.',
+                enterFullscreen: "Vollbildmodus", exitFullscreen: "Vollbildmodus beenden", bulkEditSelected: "Einträge ausgewählt.", bulkEditAssignTechnician: "Techniker zuweisen:",
+                bulkEditChangeStatus: "Status ändern:", bulkEditApplyButton: "Anwenden", noChange: "Keine Änderung", notifBulkUpdateSuccess: (count) => `${count} Einträge erfolgreich aktualisiert.`,
+                notifBulkUpdateError: "Fehler bei der Massenbearbeitung.", ipeiHistoryFound: "gesehen", ipeiHistoryTooltip: (count) => `Diese IPEI wurde bereits in ${count} anderen Einträgen gefunden. Klicken um die Historie anzuzeigen.`,
+                generateEmailButton: "E-Mail generieren", emailGenerationTitle: "E-Mail Inhalt generieren", emailGenerationInfo: "Der folgende Text wurde generiert. Kopieren Sie ihn und fügen Sie ihn in Ihr E-Mail-Programm ein.",
+                copyTextButton: "Text kopieren", copySuccess: "Text in die Zwischenablage kopiert!", copyError: "Fehler beim Kopieren.", emailGreeting: "Guten Tag,", emailClosing: "Freundliche Grüsse",
+                loginButton: "Anmelden", logoutButton: "Abmelden", emailPlaceholder: "E-Mail-Adresse", passwordPlaceholder: "Passwort", loginError: "E-Mail oder Passwort ist falsch.",
+                knowledgeBase: "Wissensbasis", solutionTitle: "Titel der Lösung", solutionContent: "Inhalt / Anleitung", relatedErrors: "Zugehörige Fehler (durch Komma getrennt)",
+                relatedErrorsPlaceholder: "z.B. E-102, Error 102, Rotes Licht", newSolution: "Neuer Lösungsartikel", editSolution: "Lösungsartikel bearbeiten", saveSolution: "Lösung speichern",
+                solution: "Lösung", noSolutionsFound: "Keine Lösungen gefunden.", patternNameLabel: "Name des Musters", patternNamePlaceholder: "z.B. 'Lange Etikette V1'",
+                exampleQrPlaceholder: "Hier den kompletten Inhalt eines echten QR-Codes einfügen...", deviceNameLabel: "Gerätename (optional)", deviceNamePlaceholder: "z.B. 'CH-7722 TIPTEL'",
+                previewTitle: "Automatisch erkannte Daten (kann korrigiert werden):", savePatternButton: "Muster speichern", cancelEditButton: "Bearbeitung abbrechen",
+                existingPatternsTitle: "Gespeicherte Muster", noPatternsInfo: "Noch keine Muster erstellt.",
             },
-            fr: { /* ... */ }
         }
-      }
+      };
     },
     watch: {
       qrCodeInput(newValue){
@@ -973,7 +915,7 @@
       }
     },
     computed: {
-      t() { return this.translations[this.currentLanguage]; },
+      t() { return this.translations.de; },
       tableHeaders() { return this.t.tableHeaders; },
       sortedAndFilteredRepairs() {
         let filtered = this.repairs;
@@ -1057,7 +999,6 @@
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         return diffDays > 14;
       },
-      setLanguage(lang) { this.currentLanguage = lang; document.documentElement.lang = lang; },
       getStatusTranslationKey(status) {
         const statusMap = { 'Offen': 'statusOpen', 'In Bearbeitung': 'statusInProgress', 'Abgeschlossen': 'statusCompleted', 'Beim Kunden repariert': 'statusCompletedAtCustomer' };
         return statusMap[status] || status;
@@ -1078,10 +1019,10 @@
       },
       getStatusClass(status) {
         switch (status) {
-            case 'Abgeschlossen': case 'Beim Kunden repariert': return 'bg-green-100 text-green-800';
-            case 'In Bearbeitung': return 'bg-blue-100 text-blue-800';
-            case 'Offen': return 'bg-red-100 text-red-800';
-            default: return 'bg-gray-100 text-gray-800';
+            case 'Abgeschlossen': case 'Beim Kunden repariert': return 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300';
+            case 'In Bearbeitung': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300';
+            case 'Offen': return 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300';
+            default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
         }
       },
       confirmDelete(type, item) {
@@ -1119,13 +1060,11 @@
       executeConfirm() { if (typeof this.confirmAction === 'function') this.confirmAction(); this.cancelConfirm(); },
       cancelConfirm() { this.showConfirmModal = false; this.confirmMessage = ''; this.confirmAction = null; },
       
-      // NEUE Methoden für den Kamera-Scanner
       onScanSuccess(decodedText, decodedResult) {
         this.processQRCode(decodedText);
         this.stopScanner();
       },
       onScanFailure(error) {
-        // Wird bei jedem nicht erfolgreichen Frame aufgerufen, meist ignoriert.
         // console.warn(`Code scan error = ${error}`);
       },
       startScanner() {
@@ -1168,9 +1107,9 @@
         this.showNotification(this.t.notifRepairAdded, 'success');
       },
       editRepair(r){ 
-        this.ipeiHistoryCount = 0; // Reset history count
+        this.ipeiHistoryCount = 0; 
         this.currentEdit = JSON.parse(JSON.stringify(r));
-        this.originalEdit = JSON.parse(JSON.stringify(r)); // Für Audit Trail
+        this.originalEdit = JSON.parse(JSON.stringify(r)); 
         if (!this.currentEdit.comments) this.currentEdit.comments = [];
         if (!this.currentEdit.techniker) this.currentEdit.techniker = '';
         if (!this.currentEdit.attachments) this.currentEdit.attachments = [];
@@ -1217,7 +1156,6 @@
       processQRCode(text){
         const parsed = this.parseQRCodeData(text || '');
         if (parsed && Object.keys(parsed).length > 0) {
-            // Apply formatting
             if(parsed.ipei) parsed.ipei = this.formatIpei(parsed.ipei);
             if(parsed.pid) parsed.pid = this.formatPid(parsed.pid);
 
@@ -1235,7 +1173,6 @@
         
         let parsedResult = null;
 
-        // 1. Versuche, das passende Muster aus der Admin-Konfiguration zu finden
         if (this.qrCodePatterns && this.qrCodePatterns.length > 0) {
             for (const pattern of this.qrCodePatterns) {
                 if (!pattern.example) continue;
@@ -1265,12 +1202,9 @@
             }
         }
 
-        // 2. FALLBACK: Wenn kein Muster passt, versuche generische GS1-Analyse
         if (!parsedResult) {
             const dataString = cleanedText.replace(/^\[\)\>\s*\d{2}\s*/, '').replace(/\s+/g, '');
-            const identifiers = {
-                '1P': 'fiche', '10D': 'date', '22S': 'ipei', '34S': 'pid'
-            };
+            const identifiers = { '1P': 'fiche', '10D': 'date', '22S': 'ipei', '34S': 'pid' };
             const allIds = Object.keys(identifiers).join('|');
             const regex = new RegExp(`(${allIds})`, 'g');
             const matches = [...dataString.matchAll(regex)];
@@ -1285,20 +1219,17 @@
                     const endIndex = nextMatch ? nextMatch.index : dataString.length;
                     let dataValue = dataString.substring(startIndex, endIndex);
 
-                    // Korrektur für das Datum, um nur YYWww zu nehmen
                     if (field === 'date' && dataValue.length > 5) {
                         if (/^\d{2}W\d{2}/.test(dataValue)) {
                            dataValue = dataValue.substring(0, 5);
                         }
                     }
-
                     result[field] = dataValue;
                 });
                 parsedResult = result;
             }
         }
 
-        // 3. Nachbearbeitung: Gerätenamen ersetzen
         if (parsedResult) {
             if (parsedResult.fiche === '02660000') {
                 parsedResult.fiche = 'CH-7722 Tiptel';
@@ -1306,26 +1237,16 @@
             return parsedResult;
         }
 
-        return null; // Nichts hat funktioniert
+        return null;
       },
       async checkIpeiHistory(ipeiValue, currentIdToExclude = null) {
-        if (!ipeiValue) {
-          this.isCheckingIpei = false;
-          return;
-        }
+        if (!ipeiValue) { this.isCheckingIpei = false; return; }
         try {
           const q = query(collection(db, 'repairs'), where('ipei', '==', ipeiValue));
           const querySnapshot = await getDocs(q);
-          
           let count = 0;
-          querySnapshot.forEach(doc => {
-              if (doc.id !== currentIdToExclude) {
-                  count++;
-              }
-          });
-
+          querySnapshot.forEach(doc => { if (doc.id !== currentIdToExclude) { count++; } });
           this.ipeiHistoryCount = count;
-
         } catch (error) {
           console.error("Error checking IPEI history:", error);
           this.showNotification("Fehler bei der IPEI-Prüfung.", 'error');
@@ -1340,16 +1261,12 @@
       },
       formatIpei(ipei) {
         const cleaned = String(ipei).replace(/\s+/g, '');
-        if (cleaned.length === 13) {
-            return `${cleaned.substring(0,5)} ${cleaned.substring(5,12)} ${cleaned.substring(12)}`;
-        }
+        if (cleaned.length === 13) { return `${cleaned.substring(0,5)} ${cleaned.substring(5,12)} ${cleaned.substring(12)}`; }
         return ipei;
       },
       formatPid(pid) {
         const cleaned = String(pid).replace(/\s+/g, '');
-        if (cleaned.length === 16) {
-            return cleaned.match(/.{1,4}/g).join(' ');
-        }
+        if (cleaned.length === 16) { return cleaned.match(/.{1,4}/g).join(' '); }
         return pid;
       },
       async addHouse(){
@@ -1460,42 +1377,25 @@
         doc.setFont("helvetica", "normal");
         doc.setFontSize(11);
         const detailFields = [
-            { label: 'Gerät', value: repair.fiche },
-            { label: 'Erfasst am', value: repair.captured_at },
-            { label: 'Haus', value: repair.house },
-            { label: 'Status', value: repair.status },
-            { label: 'Fehler', value: repair.error },
-            { label: 'Techniker', value: repair.techniker },
-            { label: 'IPEI', value: repair.ipei },
-            { label: 'P-ID', value: repair.pid },
+            { label: 'Gerät', value: repair.fiche }, { label: 'Erfasst am', value: repair.captured_at }, { label: 'Haus', value: repair.house },
+            { label: 'Status', value: repair.status }, { label: 'Fehler', value: repair.error }, { label: 'Techniker', value: repair.techniker },
+            { label: 'IPEI', value: repair.ipei }, { label: 'P-ID', value: repair.pid },
         ];
         
         const body = detailFields.filter(f => f.value).map(f => [f.label, f.value]);
         doc.autoTable({
-          startY: 30,
-          head: [['Feld', 'Wert']],
-          body: body,
-          theme: 'grid',
-          headStyles: { fillColor: [79, 70, 229] },
+          startY: 30, head: [['Feld', 'Wert']], body: body, theme: 'grid', headStyles: { fillColor: [79, 70, 229] },
         });
 
         if (repair.comments && repair.comments.length > 0) {
-            const commentsBody = this.sortedComments(repair.comments).map(c => [
-                this.formatTimestamp(c.timestamp),
-                c.user,
-                c.text
-            ]);
+            const commentsBody = this.sortedComments(repair.comments).map(c => [ this.formatTimestamp(c.timestamp), c.user, c.text ]);
             doc.autoTable({
-                startY: doc.lastAutoTable.finalY + 10,
-                head: [['Datum', 'Benutzer', 'Eintrag']],
-                body: commentsBody,
-                theme: 'striped',
+                startY: doc.lastAutoTable.finalY + 10, head: [['Datum', 'Benutzer', 'Eintrag']], body: commentsBody, theme: 'striped',
                 headStyles: { fillColor: [79, 70, 229] },
                 didParseCell: function (data) {
                     const originalComment = repair.comments.find(c => c.text === data.cell.raw);
                     if(originalComment && originalComment.isSystem) {
-                       data.cell.styles.fontStyle = 'italic';
-                       data.cell.styles.textColor = '#555';
+                       data.cell.styles.fontStyle = 'italic'; data.cell.styles.textColor = '#555';
                     }
                 }
             });
@@ -1561,10 +1461,7 @@
       },
       async logout(){ await signOut(auth); },
       searchSolutions(searchTerm) {
-        if (!searchTerm || searchTerm.length < 2) {
-            this.errorSuggestions = [];
-            return;
-        }
+        if (!searchTerm || searchTerm.length < 2) { this.errorSuggestions = []; return; }
         const lowerCaseSearch = searchTerm.toLowerCase();
         this.errorSuggestions = this.knowledgeBase.filter(solution => {
             const titleMatch = solution.title.toLowerCase().includes(lowerCaseSearch);
@@ -1573,26 +1470,23 @@
             return titleMatch || keywordMatch;
         });
       },
-      showSolution(solution) {
-        this.currentSolution = solution;
-        this.showSolutionModal = true;
-      },
-      hideErrorSuggestions() {
-        // Delay hiding to allow click event to register
-        setTimeout(() => { this.showErrorSuggestions = false; }, 200);
-      },
+      showSolution(solution) { this.currentSolution = solution; this.showSolutionModal = true; },
+      hideErrorSuggestions() { setTimeout(() => { this.showErrorSuggestions = false; }, 200); },
       destroyCharts() {
         for (const chartKey in this.charts) {
-          if (this.charts[chartKey]) {
-            this.charts[chartKey].destroy();
-            this.charts[chartKey] = null;
-          }
+          if (this.charts[chartKey]) { this.charts[chartKey].destroy(); this.charts[chartKey] = null; }
         }
       },
       renderCharts() {
-        this.destroyCharts(); // Clear previous charts
+        this.destroyCharts();
+        const chartOptions = {
+            plugins: { legend: { labels: { color: this.isDarkMode ? '#d1d5db' : '#374151' } } },
+            scales: { 
+                x: { ticks: { color: this.isDarkMode ? '#9ca3af' : '#6b7280' }, grid: { color: this.isDarkMode ? '#374151' : '#e5e7eb' } },
+                y: { ticks: { color: this.isDarkMode ? '#9ca3af' : '#6b7280' }, grid: { color: this.isDarkMode ? '#374151' : '#e5e7eb' } }
+            }
+        };
 
-        // Status Chart
         const statusCtx = document.getElementById('statusChart')?.getContext('2d');
         if (statusCtx) {
           const statusCounts = this.allRepairsForStats.reduce((acc, r) => {
@@ -1600,82 +1494,36 @@
             acc[statusKey] = (acc[statusKey] || 0) + 1;
             return acc;
           }, {});
-
           this.charts.status = new Chart(statusCtx, {
-            type: 'doughnut',
-            data: {
-              labels: Object.keys(statusCounts),
-              datasets: [{
-                label: 'Status',
-                data: Object.values(statusCounts),
-                backgroundColor: [ '#ef4444', '#3b82f6', '#22c55e', '#10b981' ],
-                hoverOffset: 4
-              }]
-            }
+            type: 'doughnut', data: { labels: Object.keys(statusCounts), datasets: [{ label: 'Status', data: Object.values(statusCounts), backgroundColor: [ '#ef4444', '#3b82f6', '#22c55e', '#10b981' ], hoverOffset: 4 }] }, options: { plugins: { legend: { labels: { color: this.isDarkMode ? '#d1d5db' : '#374151' } } } }
           });
         }
         
-        // Errors Chart
         const errorsCtx = document.getElementById('errorsChart')?.getContext('2d');
         if (errorsCtx) {
             const mostCommonErrors = this.mostCommonErrors;
             this.charts.errors = new Chart(errorsCtx, {
-                type: 'bar',
-                data: {
-                    labels: mostCommonErrors.map(e => e.name),
-                    datasets: [{
-                        label: 'Anzahl',
-                        data: mostCommonErrors.map(e => e.count),
-                        backgroundColor: '#6366f1',
-                    }]
-                },
-                options: {
-                    indexAxis: 'y',
-                    scales: {
-                        x: { beginAtZero: true }
-                    }
-                }
+                type: 'bar', data: { labels: mostCommonErrors.map(e => e.name), datasets: [{ label: 'Anzahl', data: mostCommonErrors.map(e => e.count), backgroundColor: '#6366f1', }] }, options: { ...chartOptions, indexAxis: 'y' }
             });
         }
 
-        // Houses Chart
         const housesCtx = document.getElementById('housesChart')?.getContext('2d');
         if (housesCtx) {
               const repairsByHouse = this.repairsByHouse;
               this.charts.houses = new Chart(housesCtx, {
-                type: 'bar',
-                data: {
-                    labels: Object.keys(repairsByHouse),
-                    datasets: [{
-                        label: 'Anzahl Reparaturen',
-                        data: Object.values(repairsByHouse),
-                        backgroundColor: '#8b5cf6',
-                    }]
-                },
-                options: {
-                    scales: {
-                        y: { beginAtZero: true }
-                    }
-                }
+                type: 'bar', data: { labels: Object.keys(repairsByHouse), datasets: [{ label: 'Anzahl Reparaturen', data: Object.values(repairsByHouse), backgroundColor: '#8b5cf6', }] }, options: chartOptions
             });
         }
       },
       async saveUserRole(){
         if(!this.newUser.email){ this.showNotification("Bitte E-Mail angeben.", 'error'); return; }
         try{
-            const dataToSave = {
-                email: this.newUser.email,
-                isAdmin: this.newUser.isAdmin,
-                technicianName: this.newUser.technicianName || null
-            };
+            const dataToSave = { email: this.newUser.email, isAdmin: this.newUser.isAdmin, technicianName: this.newUser.technicianName || null };
             if (this.newUser.id) {
-                // Update
-                const userRef = doc(db, 'users', this.newUser.id);
-                await updateDoc(userRef, dataToSave);
+                await updateDoc(doc(db, 'users', this.newUser.id), dataToSave);
                 this.showNotification("Benutzer aktualisiert.", 'success');
             } else {
-                // Add new
-                 const qUsers = query(collection(db,'users'), where('email','==',this.newUser.email));
+                const qUsers = query(collection(db,'users'), where('email','==',this.newUser.email));
                 const existing = await getDocs(qUsers);
                 if(!existing.empty){ this.showNotification("Ein Benutzer mit dieser E-Mail existiert bereits.", 'error'); return; }
                 await addDoc(collection(db,'users'), dataToSave);
@@ -1685,17 +1533,10 @@
         }catch(e){ this.showNotification("Fehler: "+e.message, 'error'); }
       },
       async deleteUser(userId){ await deleteDoc(doc(db,'users',userId)); },
-      editUser(user) {
-        this.newUser = { ...user };
-      },
-      resetUserForm() {
-        this.newUser = { id: null, email: '', isAdmin: false, technicianName: '' };
-      },
+      editUser(user) { this.newUser = { ...user }; },
+      resetUserForm() { this.newUser = { id: null, email: '', isAdmin: false, technicianName: '' }; },
       async saveSolution() {
-          if (!this.newSolution.title || !this.newSolution.content) {
-              this.showNotification("Titel und Inhalt sind Pflichtfelder.", 'error');
-              return;
-          }
+          if (!this.newSolution.title || !this.newSolution.content) { this.showNotification("Titel und Inhalt sind Pflichtfelder.", 'error'); return; }
           const dataToSave = { ...this.newSolution };
           try {
               if (dataToSave.id) {
@@ -1708,28 +1549,44 @@
                    this.showNotification("Lösung gespeichert.", 'success');
               }
               this.newSolution = { id: null, title: '', content: '', relatedErrors: '' };
-          } catch(e) {
-              console.error(e);
-              this.showNotification("Fehler beim Speichern der Lösung.", 'error');
-          }
+          } catch(e) { console.error(e); this.showNotification("Fehler beim Speichern der Lösung.", 'error'); }
       },
       async deleteSolution(solutionId) {
-          try {
-              await deleteDoc(doc(db, 'knowledgeBase', solutionId));
-              this.showNotification("Lösung gelöscht.", 'info');
-          } catch(e) {
-              console.error(e);
-              this.showNotification("Fehler beim Löschen der Lösung.", 'error');
-          }
+          try { await deleteDoc(doc(db, 'knowledgeBase', solutionId)); this.showNotification("Lösung gelöscht.", 'info'); }
+          catch(e) { console.error(e); this.showNotification("Fehler beim Löschen der Lösung.", 'error'); }
       },
-      editSolution(solution) {
-          this.newSolution = { ...solution };
+      editSolution(solution) { this.newSolution = { ...solution }; },
+      toggleDarkMode() {
+        this.isDarkMode = !this.isDarkMode;
+        if (this.isDarkMode) {
+          document.documentElement.classList.add('dark');
+          localStorage.setItem('darkMode', 'enabled');
+        } else {
+          document.documentElement.classList.remove('dark');
+          localStorage.setItem('darkMode', 'disabled');
+        }
+        if(this.currentView === 'dashboard') { this.renderCharts(); } // Re-render charts with new colors
+      },
+      // Placeholder methods for photo upload
+      handleFileSelect(event) {
+        const files = event.target.files;
+        if (!files.length) return;
+        this.showNotification(`Vorbereitung für Upload von ${files.length} Datei(en). Feature in Kürze verfügbar.`, 'info');
+        // Actual upload logic will go here
+      },
+      deleteAttachment(index) {
+          this.showNotification(`Löschen von Anhängen in Kürze verfügbar.`, 'info');
       }
     },
     async mounted(){
       window.addEventListener('online', () => this.isOnline = true);
       window.addEventListener('offline', () => this.isOnline = false);
       document.addEventListener('fullscreenchange', this.handleFullscreenChange);
+
+      if (localStorage.getItem('darkMode') === 'enabled') {
+          this.isDarkMode = true;
+          document.documentElement.classList.add('dark');
+      }
 
       const authCheck = new Promise(resolve => {
         onAuthStateChanged(auth, async (u)=>{
@@ -1748,13 +1605,8 @@
             this.listenToConfig('houses', 'houses', 'list');
             this.listenToConfig('technicians', 'technikerList', 'list');
             
-            // Lade Wissensdatenbank und QR-Muster für alle, da sie für das Scannen benötigt werden
-            onSnapshot(collection(db, 'knowledgeBase'), (s) => {
-              this.knowledgeBase = s.docs.map(d => ({ id: d.id, ...d.data() }));
-            });
-            onSnapshot(query(collection(db, 'qrCodePatterns')), (s) => {
-              this.qrCodePatterns = s.docs.map(d => ({ id: d.id, ...d.data() }));
-            });
+            onSnapshot(collection(db, 'knowledgeBase'), (s) => { this.knowledgeBase = s.docs.map(d => ({ id: d.id, ...d.data() })); });
+            onSnapshot(query(collection(db, 'qrCodePatterns')), (s) => { this.qrCodePatterns = s.docs.map(d => ({ id: d.id, ...d.data() })); });
 
             if(this.user.isAdmin) {
                 onSnapshot(collection(db,'users'), s => { this.userList = s.docs.map(d => ({ id:d.id, ...d.data() })); });
@@ -1781,4 +1633,3 @@
 </script>
 </body>
 </html>
-
