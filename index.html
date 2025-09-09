@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Reparatur Manager Online v1.84</title>
+  <title>Reparatur Manager Online v1.86</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     // Tailwind Dark Mode Config
@@ -607,16 +607,8 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.exampleQrLabel }}</label>
-                        <textarea v-model="currentPattern.example" @input="updatePreviewFromExample" rows="4" :placeholder="t.exampleQrPlaceholder" class="mt-1 p-2 border rounded w-full font-mono dark:bg-gray-800 dark:border-gray-600"></textarea>
-                    </div>
-                    <div v-if="Object.keys(currentPattern.parts).length > 0">
-                        <h5 class="font-semibold text-sm mb-2">{{ t.previewTitle }}</h5>
-                        <div class="bg-gray-50 p-3 rounded-md text-sm space-y-2 dark:bg-gray-900/50">
-                             <div v-for="(field, key) in qrFields" :key="key">
-                                <label class="block text-xs font-medium text-gray-500 dark:text-gray-400">{{ field.label }}</label>
-                                <input v-model="currentPattern.parts[key]" type="text" class="mt-1 p-1 border rounded w-full font-mono text-xs dark:bg-gray-800 dark:border-gray-600">
-                             </div>
-                        </div>
+                        <textarea v-model="currentPattern.example" rows="4" :placeholder="t.exampleQrPlaceholder" class="mt-1 p-2 border rounded w-full font-mono dark:bg-gray-800 dark:border-gray-600"></textarea>
+                         <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Ersetzen Sie variable Teile durch Platzhalter: <code>{{Fiche}}</code>, <code>{{Datum}}</code>, <code>{{Ipei}}</code>, <code>{{Pid}}</code></p>
                     </div>
                 </div>
                 <div class="mt-4 space-x-2">
@@ -721,7 +713,7 @@
   // Firebase SDKs
   import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
   import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
-  import { getFirestore, collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, serverTimestamp, query, getDocs, setDoc, orderBy, where, enableIndexedDbPersistence, writeBatch } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+  import { getFirestore, collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, serverTimestamp, query, getDocs, setDoc, orderBy, where, enableIndexedDbPersistence, writeBatch, deleteField } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
   import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-storage.js";
   
   // Vue 3
@@ -754,7 +746,7 @@
   const appConfig = {
     data() {
       return {
-        version: '1.84',
+        version: '1.85',
         isAuthReady: false,
         user: { loggedIn: false, email: null, uid: null, isAdmin: false, technicianName: null },
         loginForm: { email: '', password: '', error: '' },
@@ -947,10 +939,7 @@
       t() { return this.translations.de; },
       tableHeaders() { return this.t.tableHeaders; },
       sortedAndFilteredRepairs() {
-        let sourceData = this.repairs;
-        if(this.currentView === 'archive'){
-            sourceData = this.archivedRepairs;
-        }
+        let sourceData = this.currentView === 'archive' ? this.archivedRepairs : this.repairs;
 
         let filtered = sourceData;
         if (this.currentView === 'my_repairs' && this.user.technicianName) {
@@ -1199,6 +1188,7 @@
         if(!this.newEntry.house || !this.newEntry.fiche){ this.showNotification(this.t.notifFillHouseAndDevice, 'error'); return; }
         const lastSelectedHouse = this.newEntry.house;
         const dataToSave = JSON.parse(JSON.stringify(this.newEntry));
+        dataToSave.archived = false; // explicitly set not archived
         await addDoc(collection(db,'repairs'), { ...dataToSave, cost:0, createdAt: serverTimestamp() });
         Object.assign(this.newEntry, { captured_at:new Date().toISOString().slice(0,10), date:'', fiche:'', fiche_engagement:'', ipei:'', pid:'', error:'', status:'Offen', comments: [], techniker: '', attachments: [] });
         this.newEntry.house = lastSelectedHouse;
@@ -1237,7 +1227,7 @@
             data.completedAt = serverTimestamp();
         }
 
-        const ref = doc(db,'repairs',data.id);
+        const ref = doc(db, 'repairs', data.id);
         delete data.id;
         await updateDoc(ref, data);
         this.showEditModal = false;
@@ -1280,27 +1270,31 @@
         if (this.qrCodePatterns && this.qrCodePatterns.length > 0) {
             for (const pattern of this.qrCodePatterns) {
                 if (!pattern.example) continue;
+                
+                // Escape special regex characters from the pattern string
                 let regexString = '^' + pattern.example.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                const placeholderRegex = /\{\{([^}]+)\}\}/g;
-                const placeholders = [...pattern.example.matchAll(placeholderRegex)].map(m => m[1]);
+
+                // Find all placeholders like {{Fiche}} and create capture groups
+                const placeholderRegex = /\\{\\{([^}]+)\}\\}/g;
+                const placeholders = [...regexString.matchAll(placeholderRegex)].map(m => m[1]);
+                
                 if (placeholders.length === 0) continue;
 
                 placeholders.forEach(ph => {
-                    regexString = regexString.replace(`{{${ph}}}`, '(.+)');
+                    regexString = regexString.replace(`\\{\\{${ph}\\}\\}`, '(.+)');
                 });
                 
-                const regex = new RegExp(regexString);
-                const match = cleanedText.match(regex);
+                const finalRegex = new RegExp(regexString);
+                const match = cleanedText.match(finalRegex);
 
                 if (match) {
-                    let result = { fiche: pattern.deviceName || '' };
+                    parsedResult = { fiche: pattern.deviceName || '' };
                     placeholders.forEach((ph, index) => {
-                        const key = ph.toLowerCase();
+                        const key = ph.toLowerCase(); // 'Fiche' -> 'fiche'
                         if (this.qrFields[key]) {
-                            result[key] = match[index + 1];
+                            parsedResult[key] = match[index + 1]; // match[0] is the full string
                         }
                     });
-                    parsedResult = result;
                     break; 
                 }
             }
@@ -1514,17 +1508,17 @@
         doc.save(`reparatur_${repair.fiche || 'unbekannt'}_${repair.captured_at}.pdf`);
       },
       listenToRepairs() {
-          const q = query(collection(db, 'repairs'), orderBy('createdAt', 'desc'));
+          const q = query(collection(db, 'repairs'), where('archived', '==', false), orderBy('createdAt', 'desc'));
           onSnapshot(q, (snapshot) => { this.repairs = snapshot.docs.map(d => ({ id: d.id, ...d.data() })); },
           (error) => { console.error("Fehler beim Laden der Reparaturen:", error); });
       },
       listenToArchivedRepairs() {
-          const q = query(collection(db, 'archived_repairs'), orderBy('createdAt', 'desc'));
+          const q = query(collection(db, 'repairs'), where('archived', '==', true), orderBy('createdAt', 'desc'));
           onSnapshot(q, (snapshot) => { this.archivedRepairs = snapshot.docs.map(d => ({ id: d.id, ...d.data() })); },
           (error) => { console.error("Fehler beim Laden des Archivs:", error); });
       },
       async loadAllRepairsForStats() {
-          const q = query(collection(db, 'repairs'), orderBy('createdAt', 'desc'));
+          const q = query(collection(db, 'repairs'), where('archived', '==', false), orderBy('createdAt', 'desc'));
           const querySnapshot = await getDocs(q);
           this.allRepairsForStats = querySnapshot.docs.map(d => d.data());
       },
@@ -1594,41 +1588,75 @@
       },
       renderCharts() {
         this.destroyCharts();
-        const chartOptions = {
-            plugins: { legend: { labels: { color: this.isDarkMode ? '#d1d5db' : '#374151' } } },
-            scales: { 
-                x: { ticks: { color: this.isDarkMode ? '#9ca3af' : '#6b7280' }, grid: { color: this.isDarkMode ? '#374151' : '#e5e7eb' } },
-                y: { ticks: { color: this.isDarkMode ? '#9ca3af' : '#6b7280' }, grid: { color: this.isDarkMode ? '#374151' : '#e5e7eb' } }
-            }
-        };
-
-        const statusCtx = document.getElementById('statusChart')?.getContext('2d');
-        if (statusCtx) {
-          const statusCounts = this.allRepairsForStats.reduce((acc, r) => {
-            const statusKey = this.t[this.getStatusTranslationKey(r.status)] || r.status;
-            acc[statusKey] = (acc[statusKey] || 0) + 1;
-            return acc;
-          }, {});
-          this.charts.status = new Chart(statusCtx, {
-            type: 'doughnut', data: { labels: Object.keys(statusCounts), datasets: [{ label: 'Status', data: Object.values(statusCounts), backgroundColor: [ '#ef4444', '#3b82f6', '#22c55e', '#10b981' ], hoverOffset: 4 }] }, options: { plugins: { legend: { labels: { color: this.isDarkMode ? '#d1d5db' : '#374151' } } } }
-          });
-        }
         
-        const errorsCtx = document.getElementById('errorsChart')?.getContext('2d');
-        if (errorsCtx) {
-            const mostCommonErrors = this.mostCommonErrors;
-            this.charts.errors = new Chart(errorsCtx, {
-                type: 'bar', data: { labels: mostCommonErrors.map(e => e.name), datasets: [{ label: 'Anzahl', data: mostCommonErrors.map(e => e.count), backgroundColor: '#6366f1', }] }, options: { ...chartOptions, indexAxis: 'y' }
-            });
-        }
+        this.$nextTick(() => {
+            const chartOptions = {
+                plugins: { legend: { labels: { color: this.isDarkMode ? '#d1d5db' : '#374151' } } },
+                scales: { 
+                    x: { ticks: { color: this.isDarkMode ? '#9ca3af' : '#6b7280' }, grid: { color: this.isDarkMode ? '#374151' : '#e5e7eb' } },
+                    y: { ticks: { color: this.isDarkMode ? '#9ca3af' : '#6b7280' }, grid: { color: this.isDarkMode ? '#374151' : '#e5e7eb' } }
+                }
+            };
 
-        const housesCtx = document.getElementById('housesChart')?.getContext('2d');
-        if (housesCtx) {
-              const repairsByHouse = this.repairsByHouse;
-              this.charts.houses = new Chart(housesCtx, {
-                type: 'bar', data: { labels: Object.keys(repairsByHouse), datasets: [{ label: 'Anzahl Reparaturen', data: Object.values(repairsByHouse), backgroundColor: '#8b5cf6', }] }, options: chartOptions
-            });
-        }
+            const statusCanvas = document.getElementById('statusChart');
+            if (statusCanvas) {
+                const statusCtx = statusCanvas.getContext('2d');
+                const statusCounts = this.allRepairsForStats.reduce((acc, r) => {
+                    const statusKey = this.t[this.getStatusTranslationKey(r.status)] || r.status;
+                    acc[statusKey] = (acc[statusKey] || 0) + 1;
+                    return acc;
+                }, {});
+                this.charts.status = new Chart(statusCtx, {
+                    type: 'doughnut', 
+                    data: { 
+                        labels: Object.keys(statusCounts), 
+                        datasets: [{ 
+                            label: 'Status', 
+                            data: Object.values(statusCounts), 
+                            backgroundColor: [ '#ef4444', '#3b82f6', '#22c55e', '#10b981' ], 
+                            hoverOffset: 4 
+                        }] 
+                    }, 
+                    options: { plugins: { legend: { labels: { color: this.isDarkMode ? '#d1d5db' : '#374151' } } } }
+                });
+            }
+            
+            const errorsCanvas = document.getElementById('errorsChart');
+            if (errorsCanvas) {
+                const errorsCtx = errorsCanvas.getContext('2d');
+                const mostCommonErrors = this.mostCommonErrors;
+                this.charts.errors = new Chart(errorsCtx, {
+                    type: 'bar', 
+                    data: { 
+                        labels: mostCommonErrors.map(e => e.name), 
+                        datasets: [{ 
+                            label: 'Anzahl', 
+                            data: mostCommonErrors.map(e => e.count), 
+                            backgroundColor: '#6366f1', 
+                        }] 
+                    }, 
+                    options: { ...chartOptions, indexAxis: 'y' }
+                });
+            }
+
+            const housesCanvas = document.getElementById('housesChart');
+            if (housesCanvas) {
+                const housesCtx = housesCanvas.getContext('2d');
+                const repairsByHouse = this.repairsByHouse;
+                this.charts.houses = new Chart(housesCtx, {
+                    type: 'bar', 
+                    data: { 
+                        labels: Object.keys(repairsByHouse), 
+                        datasets: [{ 
+                            label: 'Anzahl Reparaturen', 
+                            data: Object.values(repairsByHouse), 
+                            backgroundColor: '#8b5cf6', 
+                        }] 
+                    }, 
+                    options: chartOptions
+                });
+            }
+        });
       },
       async saveUserRole(){
         if(!this.newUser.email){ this.showNotification("Bitte E-Mail angeben.", 'error'); return; }
@@ -1738,16 +1766,13 @@
             return;
         }
         
-        // This makes a copy to avoid reactivity issues.
         const patterns = JSON.parse(JSON.stringify(this.qrCodePatterns));
         if(this.currentPattern.id) {
-            // Find and update existing
             const index = patterns.findIndex(p => p.id === this.currentPattern.id);
             if(index !== -1) {
                 patterns[index] = this.currentPattern;
             }
         } else {
-            // Add new with a temporary ID
             patterns.push({ ...this.currentPattern, id: Date.now().toString() });
         }
 
@@ -1782,6 +1807,7 @@
         threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
         const q = query(collection(db, 'repairs'), 
+            where('archived', '==', false),
             where('status', 'in', [this.t.statusCompleted, this.t.statusCompletedAtCustomer]),
             where('completedAt', '<=', threeMonthsAgo)
         );
@@ -1790,34 +1816,27 @@
         if (snapshot.empty) {
             return; // Nothing to archive
         }
-
+        
         const batch = writeBatch(db);
         snapshot.docs.forEach(d => {
-            const data = d.data();
-            const archiveRef = doc(db, 'archived_repairs', d.id);
-            const originalRef = doc(db, 'repairs', d.id);
-            batch.set(archiveRef, data);
-            batch.delete(originalRef);
+            const ref = doc(db, 'repairs', d.id);
+            batch.update(ref, { archived: true });
         });
 
         await batch.commit();
         this.showNotification(this.t.notifArchived(snapshot.size), 'info');
     },
     async unarchiveRepair(repairId) {
-        const repairDoc = this.archivedRepairs.find(r => r.id === repairId);
-        if (repairDoc) {
-            const batch = writeBatch(db);
-            const newRef = doc(db, 'repairs', repairId);
-            const oldRef = doc(db, 'archived_repairs', repairId);
-            
-            // Remove completedAt to prevent immediate re-archiving if status isn't changed
-            const dataToRestore = { ...repairDoc };
-            delete dataToRestore.completedAt;
-
-            batch.set(newRef, dataToRestore);
-            batch.delete(oldRef);
-            await batch.commit();
+        const repairRef = doc(db, 'repairs', repairId);
+        try {
+            await updateDoc(repairRef, {
+                archived: false,
+                completedAt: deleteField() // Remove timestamp to prevent immediate re-archiving
+            });
             this.showNotification(this.t.notifRestored, 'success');
+        } catch (error) {
+            console.error("Fehler beim Wiederherstellen: ", error);
+            this.showNotification("Fehler beim Wiederherstellen.", 'error');
         }
     }
     },
@@ -1845,6 +1864,7 @@
             }
             
             this.listenToRepairs();
+            this.listenToArchivedRepairs();
             this.listenToConfig('houses', 'houses', 'list');
             this.listenToConfig('technicians', 'technikerList', 'list');
             
@@ -1858,7 +1878,6 @@
             if(this.user.isAdmin) {
                 onSnapshot(collection(db,'users'), s => { this.userList = s.docs.map(d => ({ id:d.id, ...d.data() })); });
                 this.listenToConfig('commonErrors', 'commonErrors', 'list');
-                this.listenToArchivedRepairs();
                 this.runArchiveCheck();
             }
           } else {
