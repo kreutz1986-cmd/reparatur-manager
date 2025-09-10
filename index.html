@@ -797,7 +797,7 @@
   const appConfig = {
     data() {
       return {
-        version: '1.94-live',
+        version: '1.95-live',
         isAuthReady: false,
         user: { loggedIn: false, email: null, uid: null, isAdmin: false, technicianName: null },
         loginForm: { email: '', password: '', error: '' },
@@ -1342,7 +1342,7 @@
         }
       },
       parseQRCodeData(text) {
-          const cleanedText = String(text || '').replace(/[\x00-\x1F\x7F-\x9F]/g, "").trim();
+          const cleanedText = String(text || '').replace(/[\x00-\x1F\x7F-\x9F]/g, "").replace(/\s+/g, ' ').trim();
           if (!cleanedText) return null;
           
           let parsedResult = null;
@@ -1350,17 +1350,21 @@
           if (this.qrCodePatterns && this.qrCodePatterns.length > 0) {
               for (const pattern of this.qrCodePatterns) {
                   if (!pattern.rawExample || !pattern.parts) continue;
+                  
+                  const normalizedRawExample = pattern.rawExample.replace(/\s+/g, ' ');
 
                   const sortedParts = Object.entries(pattern.parts)
-                      .map(([key, value]) => ({ key, value, index: pattern.rawExample.indexOf(value) }))
+                      .map(([key, value]) => {
+                          const normalizedValue = String(value || '').replace(/\s+/g, ' ');
+                          return { key, value: normalizedValue, index: normalizedRawExample.indexOf(normalizedValue) };
+                      })
                       .filter(part => part.value && part.index !== -1)
                       .sort((a, b) => a.index - b.index);
 
                   if (sortedParts.length === 0) continue;
 
-                  let rawEscaped = pattern.rawExample.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                  let rawEscaped = normalizedRawExample.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                   
-                  // NEU: Macht das optionale Startzeichen [ robust für verschiedene Scanner
                   if (rawEscaped.startsWith('\\[')) {
                       rawEscaped = '\\[?' + rawEscaped.substring(2);
                   }
@@ -1384,6 +1388,7 @@
                         parsedResult = {};
                         partKeysInOrder.forEach((key, index) => {
                             if (this.qrFields[key]) {
+                                // WICHTIG: Die un-normalisierte Version des Wertes aus dem Scan zurückgeben
                                 parsedResult[key] = match[index + 1];
                             }
                         });
@@ -1928,4 +1933,3 @@
 </script>
 </body>
 </html>
-
