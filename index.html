@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Reparatur Manager Online v1.93-live</title>
+  <title>Reparatur Manager Online v1.94-live</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     // Tailwind Dark Mode Config
@@ -797,7 +797,7 @@
   const appConfig = {
     data() {
       return {
-        version: '1.93-live',
+        version: '1.94-live',
         isAuthReady: false,
         user: { loggedIn: false, email: null, uid: null, isAdmin: false, technicianName: null },
         loginForm: { email: '', password: '', error: '' },
@@ -1391,34 +1391,6 @@
                       console.error("Fehler beim Erstellen des QR-Regex für Muster:", pattern.name, e);
                       continue;
                   }
-              }
-          }
-
-          if (!parsedResult) {
-              const dataString = cleanedText.replace(/^\[\)\>\s*\d{2}\s*/, '').replace(/\s+/g, '');
-              const identifiers = { '1P': 'fiche', '10D': 'date', '22S': 'ipei', '34S': 'pid' };
-              const allIds = Object.keys(identifiers).join('|');
-              const regex = new RegExp(`(${allIds})`, 'g');
-              const matches = [...dataString.matchAll(regex)];
-              
-              if (matches.length > 0) {
-                  let result = {};
-                  matches.forEach((match, i) => {
-                      const identifier = match[1];
-                      const field = identifiers[identifier];
-                      const startIndex = match.index + identifier.length;
-                      const nextMatch = matches[i + 1];
-                      const endIndex = nextMatch ? nextMatch.index : dataString.length;
-                      let dataValue = dataString.substring(startIndex, endIndex);
-
-                      if (field === 'date' && dataValue.length > 5) {
-                          if (/^\d{2}W\d{2}/.test(dataValue)) {
-                             dataValue = dataValue.substring(0, 5);
-                          }
-                      }
-                      result[field] = dataValue;
-                  });
-                  parsedResult = result;
               }
           }
           
