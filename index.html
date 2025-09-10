@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Reparatur Manager Online v1.94-live</title>
+  <title>Reparatur Manager Online v1.95-live</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     // Tailwind Dark Mode Config
@@ -1358,7 +1358,14 @@
 
                   if (sortedParts.length === 0) continue;
 
-                  let regexString = '^' + pattern.rawExample.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                  let rawEscaped = pattern.rawExample.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                  
+                  // NEU: Macht das optionale Startzeichen [ robust für verschiedene Scanner
+                  if (rawEscaped.startsWith('\\[')) {
+                      rawEscaped = '\\[?' + rawEscaped.substring(2);
+                  }
+
+                  let regexString = '^' + rawEscaped;
                   const partKeysInOrder = [];
 
                   sortedParts.forEach(part => {
