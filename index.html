@@ -1,10 +1,10 @@
-<!-- VERSION FÜR TESTBETRIEB - OHNE LOGIN -->
+<!-- LIVE VERSION -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Reparatur Manager Online v1.88 (TEST)</title>
+  <title>Reparatur Manager Online v1.92-live</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     // Tailwind Dark Mode Config
@@ -64,6 +64,12 @@
       html.dark #qr-reader { border-color: #4b5563; }
 
       .attachment-list a { word-break: break-all; }
+
+      .highlight-base { padding: 2px 4px; border-radius: 4px; color: white; font-weight: bold; }
+      .highlight-fiche { background-color: #4f46e5; } /* Indigo */
+      .highlight-date { background-color: #059669; } /* Emerald */
+      .highlight-ipei { background-color: #db2777; } /* Pink */
+      .highlight-pid { background-color: #d97706; } /* Amber */
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
@@ -82,10 +88,36 @@
     </div>
     <p class="loading-text">SYSTEM WIRD GESTARTET...</p>
   </div>
+
+  <!-- Login Form -->
+  <div v-if="isAuthReady && !user.loggedIn" class="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full space-y-8">
+      <div>
+        <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-gray-100">
+          Reparatur Manager
+        </h2>
+      </div>
+      <form class="mt-8 space-y-6" @submit.prevent="login">
+        <div class="rounded-md shadow-sm -space-y-px">
+          <div>
+            <input v-model="loginForm.email" type="email" required class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" :placeholder="t.emailPlaceholder">
+          </div>
+          <div>
+            <input v-model="loginForm.password" type="password" required class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" :placeholder="t.passwordPlaceholder">
+          </div>
+        </div>
+        <p v-if="loginForm.error" class="text-red-500 text-sm">{{ loginForm.error }}</p>
+        <div>
+          <button type="submit" class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            {{ t.loginButton }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
   
   <!-- Main App -->
   <div v-if="isAuthReady && user.loggedIn" class="p-4 md:p-8">
-    <!-- NEU: Offline-Banner -->
     <div v-if="!isOnline" class="fixed top-0 left-0 right-0 bg-yellow-400 text-yellow-900 text-center p-2 z-50 text-sm font-semibold shadow-lg">
       Sie sind offline. Änderungen werden lokal gespeichert und synchronisiert, sobald Sie wieder online sind.
     </div>
@@ -101,7 +133,6 @@
       </div>
       <div class="flex items-center mt-4 sm:mt-0 space-x-4">
         <button @click="showHouseManagement = true" class="bg-white hover:bg-gray-100 text-gray-700 font-semibold py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 dark:border-gray-600">{{ t.manageHouses }}</button>
-        <!-- NEU: Dark Mode Toggle -->
         <button @click="toggleDarkMode" class="p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700" :title="isDarkMode ? 'Heller Modus' : 'Dunkler Modus'">
             <svg v-if="!isDarkMode" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
             <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
@@ -131,7 +162,7 @@
           {{ t.loggedInAs }}: {{ user.email }}
           <span v-if="user.isAdmin" class="font-semibold text-indigo-600 dark:text-indigo-400">(Admin)</span>
         </span>
-        <!-- Logout removed for test version -->
+        <button @click="logout" class="text-sm text-gray-600 dark:text-gray-400 hover:underline">{{ t.logoutButton }}</button>
       </div>
     </header>
 
@@ -259,17 +290,17 @@
         <div v-if="selectedRepairs.length > 0" class="bg-indigo-50 border border-indigo-200 rounded-md p-4 mb-4 flex flex-wrap items-center gap-4 dark:bg-indigo-900/20 dark:border-indigo-500/30">
             <p class="text-sm font-semibold text-indigo-800 dark:text-indigo-200">{{ selectedRepairs.length }} {{ t.bulkEditSelected }}</p>
             <div class="flex-grow flex flex-wrap items-end gap-x-4 gap-y-2">
-                <div class="flex-grow">
+                <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.bulkEditAssignTechnician }}</label>
                     <select v-model="bulkEdit.technician" class="mt-1 w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                      <option value="">{{ t.noChange }}</option><option value="NONE">{{ t.noOne }}</option><option v-for="tech in technikerList" :key="tech" :value="tech">{{ tech }}</option>
+                        <option value="">{{ t.noChange }}</option><option value="NONE">{{ t.noOne }}</option><option v-for="tech in technikerList" :key="tech" :value="tech">{{ tech }}</option>
                     </select>
                 </div>
-                 <div class="flex-grow">
+                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.bulkEditChangeStatus }}</label>
                     <select v-model="bulkEdit.status" class="mt-1 w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                      <option value="">{{ t.noChange }}</option>
-                      <option>{{ t.statusOpen }}</option><option>{{ t.statusInProgress }}</option><option>{{ t.statusCompleted }}</option><option>{{ t.statusCompletedAtCustomer }}</option>
+                        <option value="">{{ t.noChange }}</option>
+                        <option>{{ t.statusOpen }}</option><option>{{ t.statusInProgress }}</option><option>{{ t.statusCompleted }}</option><option>{{ t.statusCompletedAtCustomer }}</option>
                     </select>
                 </div>
                 <button @click="applyBulkEdit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md">{{ t.bulkEditApplyButton }}</button>
@@ -380,8 +411,8 @@
                 <div class="absolute inset-y-0 right-0 flex items-center pr-3">
                     <div v-if="isCheckingIpei" class="spinner h-5 w-5 border-2"></div>
                        <a href="#" v-else-if="ipeiHistoryCount > 0" @click.prevent="showIpeiHistory(currentEdit.ipei, true)" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 hover:bg-red-200" :title="t.ipeiHistoryTooltip(ipeiHistoryCount)">
-                        {{ ipeiHistoryCount }}x {{ t.ipeiHistoryFound }}
-                    </a>
+                           {{ ipeiHistoryCount }}x {{ t.ipeiHistoryFound }}
+                       </a>
                 </div>
             </div>
         </div>
@@ -489,7 +520,7 @@
     </div>
   </div>
 
-   <!-- User Management Modal -->
+    <!-- User Management Modal -->
   <div v-if="showUserManagement" class="modal-backdrop">
     <div class="modal-content">
       <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 mb-4">{{ t.manageUsers }}</h3>
@@ -576,37 +607,66 @@
     <div v-if="showQrCodeManagement" class="modal-backdrop">
         <div class="modal-content">
             <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 mb-4">{{ t.manageQrCodes }}</h3>
-            <div class="p-4 border rounded-md mb-6 dark:border-gray-700">
+            
+            <div class="p-4 border rounded-md mb-6 dark:border-gray-700 space-y-4">
                 <h4 class="font-semibold mb-2">{{ currentPattern.id ? t.editPatternTitle : t.newPatternTitle }}</h4>
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.patternNameLabel }}</label>
-                        <input v-model="currentPattern.name" type="text" :placeholder="t.patternNamePlaceholder" class="mt-1 p-2 border rounded w-full dark:bg-gray-800 dark:border-gray-600">
-                    </div>
-                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.deviceNameLabel }}</label>
-                        <input v-model="currentPattern.deviceName" type="text" :placeholder="t.deviceNamePlaceholder" class="mt-1 p-2 border rounded w-full dark:bg-gray-800 dark:border-gray-600">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">1. Vollständigen Beispiel-Code einfügen</label>
-                        <textarea v-model="currentPattern.rawExample" rows="3" placeholder="Hier den kompletten Code von einem echten Etikett einfügen..." class="mt-1 p-2 border rounded w-full font-mono dark:bg-gray-800 dark:border-gray-600"></textarea>
-                    </div>
-                    <div v-if="currentPattern.rawExample">
-                        <h5 class="font-semibold text-sm mb-2">2. Variable Teile aus dem Beispiel zuordnen</h5>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">Kopieren Sie den Teil aus dem obigen Beispiel, der der jeweiligen Information entspricht.</p>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div v-for="(field, key) in qrFields" :key="key">
-                                <label class="block text-xs font-medium text-gray-500 dark:text-gray-400">{{ field.label }}</label>
-                                <input v-model="currentPattern.parts[key]" type="text" class="mt-1 p-1 border rounded w-full font-mono text-xs dark:bg-gray-800 dark:border-gray-600">
-                            </div>
-                        </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.patternNameLabel }}</label>
+                    <input v-model="currentPattern.name" type="text" :placeholder="t.patternNamePlaceholder" class="mt-1 p-2 border rounded w-full dark:bg-gray-800 dark:border-gray-600">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.deviceNameLabel }}</label>
+                    <input v-model="currentPattern.deviceName" type="text" :placeholder="t.deviceNamePlaceholder" class="mt-1 p-2 border rounded w-full dark:bg-gray-800 dark:border-gray-600">
+                </div>
+                </div>
+
+                <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">1. Vollständigen Beispiel-Code einfügen</label>
+                <textarea v-model="currentPattern.rawExample" @input="resetPatternParts" rows="3" placeholder="Hier den kompletten Code von einem echten Etikett einfügen..." class="mt-1 p-2 border rounded w-full font-mono dark:bg-gray-800 dark:border-gray-600"></textarea>
+                </div>
+
+                <div v-if="currentPattern.rawExample">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">2. Datenfelder im Code markieren & zuweisen</label>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Markieren Sie einen Textabschnitt unten und klicken Sie dann auf den entsprechenden "Zuweisen"-Knopf.</p>
+                
+                <div class="bg-gray-100 dark:bg-gray-900 p-3 rounded-md mb-3 border dark:border-gray-700">
+                    <pre class="whitespace-pre-wrap font-mono text-sm" v-html="highlightedExample"></pre>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-3">
+                    <div v-for="(field, key) in qrFields" :key="key">
+                        <button @click="assignSelection(key)" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-1 px-3 rounded-md text-sm dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200">
+                        <span class="font-normal">{{ field.label }}</span> als Auswahl zuweisen
+                        </button>
                     </div>
                 </div>
+                </div>
+                
+                <div v-if="Object.values(currentPattern.parts).some(p => p)">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mt-4">3. Vorschau der erkannten Werte</label>
+                    <table class="min-w-full text-sm mt-1">
+                        <thead class="bg-gray-50 dark:bg-gray-700 text-left">
+                        <tr><th class="p-2">Feld</th><th class="p-2">Wert</th></tr>
+                        </thead>
+                        <tbody class="divide-y dark:divide-gray-700">
+                          <template v-for="(field, key) in qrFields" :key="key">
+                            <tr v-if="currentPattern.parts[key]">
+                                <td class="p-2 font-medium">{{ field.label }}</td>
+                                <td class="p-2 font-mono"><span :class="['highlight-base', 'highlight-' + key]">{{ currentPattern.parts[key] }}</span></td>
+                            </tr>
+                          </template>
+                        </tbody>
+                    </table>
+                </div>
+
                 <div class="mt-4 space-x-2">
                     <button @click="savePattern" class="bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700 text-sm">{{ t.savePatternButton }}</button>
                     <button v-if="currentPattern.id" @click="resetPatternForm" class="bg-gray-200 text-gray-800 py-2 px-4 rounded hover:bg-gray-300 text-sm dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">{{ t.cancelEditButton }}</button>
                 </div>
             </div>
+
             <div>
                 <h4 class="font-semibold mb-2">{{ t.existingPatternsTitle }}</h4>
                 <ul class="max-h-60 overflow-y-auto border rounded-md divide-y dark:border-gray-700 dark:divide-gray-700">
@@ -737,7 +797,7 @@
   const appConfig = {
     data() {
       return {
-        version: '1.88',
+        version: '1.92-live',
         isAuthReady: false,
         user: { loggedIn: false, email: null, uid: null, isAdmin: false, technicianName: null },
         loginForm: { email: '', password: '', error: '' },
@@ -789,10 +849,10 @@
 
         qrCodePatterns: [],
         qrFields: {
-          fiche: { label: 'Gerät-Code', identifier: '1P' },
-          date: { label: 'Datum', identifier: '10D' },
-          ipei: { label: 'IPEI', identifier: '22S' },
-          pid: { label: 'P-ID', identifier: '34S' }
+          fiche: { label: 'Gerät-Code' },
+          date: { label: 'Datum' },
+          ipei: { label: 'IPEI' },
+          pid: { label: 'P-ID' }
         },
         currentPattern: { id: null, name: '', deviceName: '', rawExample: '', parts: { fiche: '', date: '', ipei: '', pid: '' } },
 
@@ -823,7 +883,7 @@
             de: {
                 mainTitle: "Reparatur Manager", repairs: "Reparaturen", myRepairs: "Meine Reparaturen", dashboard: "Dashboard", administration: "Verwaltung",
                 users: "Benutzer", technicians: "Techniker", manageHouses: "Häuser verwalten", manageErrors: "Fehler verwalten", manageKnowledgeBase: "Wissensbasis verwalten",
-                manageQrCodes: "Geräte & QR-Codes verwalten", loggedInAs: "Angemeldet als", newRepairEntry: "Neuer Reparatur-Eintrag", houseLabel: "Haus", capturedAtLabel: "Erfasst am",
+                manageQrCodes: "Geräte & QR-Codes verwalten", loggedInAs: "Angemeldet als", logoutButton: "Abmelden", newRepairEntry: "Neuer Reparatur-Eintrag", houseLabel: "Haus", capturedAtLabel: "Erfasst am",
                 dateLabel: "Datum", deviceLabel: "Gerät", engagementLabel: "Fiche d'engagement", ipeiLabel: "IPEI", pidLabel: "P-ID", errorLabel: "Fehler", statusLabel: "Status",
                 assignTechnicianLabel: "Techniker zuweisen", qrCodeLabel: "Barcode / QR-Code", scanPlaceholder: "Hier scannen oder einfügen...", addButton: "Hinzufügen",
                 houseFilterLabel: "Haus:", technicianFilterLabel: "Techniker:", statusFilterLabel: "Status:", all: "Alle", searchLabel: "Suche:", searchPlaceholder: "Suchen...",
@@ -845,7 +905,7 @@
                 notifBulkUpdateError: "Fehler bei der Massenbearbeitung.", ipeiHistoryFound: "gesehen", ipeiHistoryTooltip: (count) => `Diese IPEI wurde bereits in ${count} anderen Einträgen gefunden. Klicken um die Historie anzuzeigen.`,
                 generateEmailButton: "E-Mail generieren", emailGenerationTitle: "E-Mail Inhalt generieren", emailGenerationInfo: "Der folgende Text wurde generiert. Kopieren Sie ihn und fügen Sie ihn in Ihr E-Mail-Programm ein.",
                 copyTextButton: "Text kopieren", copySuccess: "Text in die Zwischenablage kopiert!", copyError: "Fehler beim Kopieren.", emailGreeting: "Guten Tag,", emailClosing: "Freundliche Grüsse",
-                loginButton: "Anmelden", logoutButton: "Abmelden", emailPlaceholder: "E-Mail-Adresse", passwordPlaceholder: "Passwort", loginError: "E-Mail oder Passwort ist falsch.",
+                loginButton: "Anmelden", emailPlaceholder: "E-Mail-Adresse", passwordPlaceholder: "Passwort", loginError: "E-Mail oder Passwort ist falsch.",
                 knowledgeBase: "Wissensbasis", solutionTitle: "Titel der Lösung", solutionContent: "Inhalt / Anleitung", relatedErrors: "Zugehörige Fehler (durch Komma getrennt)",
                 relatedErrorsPlaceholder: "z.B. E-102, Error 102, Rotes Licht", newSolution: "Neuer Lösungsartikel", editSolution: "Lösungsartikel bearbeiten", saveSolution: "Lösung speichern",
                 solution: "Lösung", noSolutionsFound: "Keine Lösungen gefunden.", patternNameLabel: "Name des Musters", patternNamePlaceholder: "z.B. 'Lange Etikette V1'",
@@ -911,11 +971,11 @@
         }
 
         if (newView === 'dashboard') {
-            this.loadAllRepairsForStats().then(() => {
-                this.$nextTick(() => {
-                    this.renderCharts();
-                });
-            });
+          this.loadAllRepairsForStats().then(() => {
+              this.$nextTick(() => {
+                  this.renderCharts();
+              });
+          });
         }
       },
       isOnline(newStatus) {
@@ -994,7 +1054,35 @@
           }, {});
           return Object.entries(counts).sort(([,a],[,b]) => b-a).slice(0, 5).map(([name, count]) => ({name: this.capitalizeFirstLetter(name), count}));
       },
-      maxRepairsInStats() { return Math.max(...Object.values(this.repairsByHouse), 1); }
+      maxRepairsInStats() { return Math.max(...Object.values(this.repairsByHouse), 1); },
+      highlightedExample() {
+        if (!this.currentPattern.rawExample) return '';
+        let text = this.currentPattern.rawExample;
+
+        // Erstelle eine Liste aller zugewiesenen Teile, sortiert nach ihrer Position im Text
+        const parts = Object.entries(this.currentPattern.parts)
+            .map(([key, value]) => ({ key, value, index: text.indexOf(value) }))
+            .filter(part => part.value && part.index !== -1)
+            .sort((a, b) => a.index - b.index);
+        
+        if (parts.length === 0) return text;
+
+        let result = '';
+        let lastIndex = 0;
+
+        parts.forEach(part => {
+            // Text vor dem aktuellen Teil hinzufügen
+            result += text.substring(lastIndex, part.index);
+            // Hervorgehobenen Teil hinzufügen
+            result += `<span class="highlight-base highlight-${part.key}">${part.value}</span>`;
+            lastIndex = part.index + part.value.length;
+        });
+
+        // Den restlichen Text nach dem letzten Teil hinzufügen
+        result += text.substring(lastIndex);
+        
+        return result;
+      }
     },
     methods: {
       highlight(text) {
@@ -1254,80 +1342,89 @@
         }
       },
       parseQRCodeData(text) {
-        const cleanedText = String(text || '').replace(/[\x00-\x1F\x7F-\x9F]/g, "").trim();
-        if (!cleanedText) return null;
-        
-        let parsedResult = null;
+          const cleanedText = String(text || '').replace(/[\x00-\x1F\x7F-\x9F]/g, "").trim();
+          if (!cleanedText) return null;
+          
+          let parsedResult = null;
 
-        if (this.qrCodePatterns && this.qrCodePatterns.length > 0) {
-            for (const pattern of this.qrCodePatterns) {
-                if (!pattern.example) continue;
-                
-                // Escape special regex characters from the pattern string
-                let regexString = '^' + pattern.example.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          if (this.qrCodePatterns && this.qrCodePatterns.length > 0) {
+              for (const pattern of this.qrCodePatterns) {
+                  if (!pattern.rawExample || !pattern.parts) continue;
 
-                // Find all placeholders like {{Fiche}} and create capture groups
-                const placeholderRegex = /\\{\\{([^}]+)\}\\}/g;
-                const placeholders = [...regexString.matchAll(placeholderRegex)].map(m => m[1]);
-                
-                if (placeholders.length === 0) continue;
+                  const sortedParts = Object.entries(pattern.parts)
+                      .map(([key, value]) => ({ key, value, index: pattern.rawExample.indexOf(value) }))
+                      .filter(part => part.value && part.index !== -1)
+                      .sort((a, b) => a.index - b.index);
 
-                placeholders.forEach(ph => {
-                    regexString = regexString.replace(`\\{\\{${ph}\\}\\}`, '(.+)');
-                });
-                
-                const finalRegex = new RegExp(regexString);
-                const match = cleanedText.match(finalRegex);
+                  if (sortedParts.length === 0) continue;
 
-                if (match) {
-                    parsedResult = { fiche: pattern.deviceName || '' };
-                    placeholders.forEach((ph, index) => {
-                        const key = ph.toLowerCase(); // 'Fiche' -> 'fiche'
-                        if (this.qrFields[key]) {
-                            parsedResult[key] = match[index + 1]; // match[0] is the full string
-                        }
-                    });
-                    break; 
-                }
-            }
-        }
+                  let regexString = '^' + pattern.rawExample.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                  const partKeysInOrder = [];
 
-        if (!parsedResult) {
-            const dataString = cleanedText.replace(/^\[\)\>\s*\d{2}\s*/, '').replace(/\s+/g, '');
-            const identifiers = { '1P': 'fiche', '10D': 'date', '22S': 'ipei', '34S': 'pid' };
-            const allIds = Object.keys(identifiers).join('|');
-            const regex = new RegExp(`(${allIds})`, 'g');
-            const matches = [...dataString.matchAll(regex)];
-            
-            if (matches.length > 0) {
-                let result = {};
-                matches.forEach((match, i) => {
-                    const identifier = match[1];
-                    const field = identifiers[identifier];
-                    const startIndex = match.index + identifier.length;
-                    const nextMatch = matches[i + 1];
-                    const endIndex = nextMatch ? nextMatch.index : dataString.length;
-                    let dataValue = dataString.substring(startIndex, endIndex);
+                  sortedParts.forEach(part => {
+                      const escapedValue = part.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                      regexString = regexString.replace(escapedValue, '(.+?)');
+                      partKeysInOrder.push(part.key);
+                  });
+                  
+                  regexString = regexString.replace(/\(\.\+\?\)$/, '(.+)');
+                  
+                  try {
+                    const finalRegex = new RegExp(regexString);
+                    const match = cleanedText.match(finalRegex);
 
-                    if (field === 'date' && dataValue.length > 5) {
-                        if (/^\d{2}W\d{2}/.test(dataValue)) {
-                           dataValue = dataValue.substring(0, 5);
-                        }
+                    if (match) {
+                        parsedResult = { fiche: pattern.deviceName || '' };
+                        partKeysInOrder.forEach((key, index) => {
+                            if (this.qrFields[key]) {
+                                parsedResult[key] = match[index + 1];
+                            }
+                        });
+                        break; 
                     }
-                    result[field] = dataValue;
-                });
-                parsedResult = result;
-            }
-        }
+                  } catch(e) {
+                      console.error("Fehler beim Erstellen des QR-Regex für Muster:", pattern.name, e);
+                      continue;
+                  }
+              }
+          }
 
-        if (parsedResult) {
-            if (parsedResult.fiche === '02660000') {
-                parsedResult.fiche = 'CH-7722 Tiptel';
-            }
-            return parsedResult;
-        }
+          if (!parsedResult) {
+              const dataString = cleanedText.replace(/^\[\)\>\s*\d{2}\s*/, '').replace(/\s+/g, '');
+              const identifiers = { '1P': 'fiche', '10D': 'date', '22S': 'ipei', '34S': 'pid' };
+              const allIds = Object.keys(identifiers).join('|');
+              const regex = new RegExp(`(${allIds})`, 'g');
+              const matches = [...dataString.matchAll(regex)];
+              
+              if (matches.length > 0) {
+                  let result = {};
+                  matches.forEach((match, i) => {
+                      const identifier = match[1];
+                      const field = identifiers[identifier];
+                      const startIndex = match.index + identifier.length;
+                      const nextMatch = matches[i + 1];
+                      const endIndex = nextMatch ? nextMatch.index : dataString.length;
+                      let dataValue = dataString.substring(startIndex, endIndex);
 
-        return null;
+                      if (field === 'date' && dataValue.length > 5) {
+                          if (/^\d{2}W\d{2}/.test(dataValue)) {
+                             dataValue = dataValue.substring(0, 5);
+                          }
+                      }
+                      result[field] = dataValue;
+                  });
+                  parsedResult = result;
+              }
+          }
+
+          if (parsedResult) {
+              if (parsedResult.fiche === '02660000') {
+                  parsedResult.fiche = 'CH-7722 Tiptel';
+              }
+              return parsedResult;
+          }
+
+          return null;
       },
       async checkIpeiHistory(ipeiValue, currentIdToExclude = null) {
         if (!ipeiValue) { this.isCheckingIpei = false; return; }
@@ -1711,28 +1808,43 @@
       deleteAttachment(index) {
           this.showNotification(`Löschen von Anhängen in Kürze verfügbar.`, 'info');
       },
-    resetPatternForm() {
+      resetPatternForm() {
         this.currentPattern = { id: null, name: '', deviceName: '', rawExample: '', parts: { fiche: '', date: '', ipei: '', pid: '' } };
-    },
-    editPattern(pattern) {
+      },
+      editPattern(pattern) {
         this.currentPattern = JSON.parse(JSON.stringify(pattern));
         if (!this.currentPattern.parts) {
              this.currentPattern.parts = { fiche: '', date: '', ipei: '', pid: '' };
         }
-    },
-    async savePattern() {
+      },
+      assignSelection(key) {
+        const selection = window.getSelection().toString().trim();
+        if (selection) {
+            // Prüfen, ob die Auswahl in einem anderen Feld bereits verwendet wird
+            for (const partKey in this.currentPattern.parts) {
+                if (this.currentPattern.parts[partKey] === selection && partKey !== key) {
+                    this.currentPattern.parts[partKey] = ''; // Alten Eintrag löschen
+                }
+            }
+            this.currentPattern.parts[key] = selection;
+        } else {
+            this.showNotification('Bitte markieren Sie zuerst einen Textabschnitt.', 'info');
+        }
+      },
+      resetPatternParts() {
+        // Beim Ändern des Roh-Textes die Zuweisungen zurücksetzen
+        this.currentPattern.parts = { fiche: '', date: '', ipei: '', pid: '' };
+      },
+      async savePattern() {
         if (!this.currentPattern.name || !this.currentPattern.rawExample) {
             this.showNotification('Mustername und Beispiel-Code sind erforderlich.', 'error');
             return;
         }
-
-        let finalExample = this.currentPattern.rawExample;
-        for (const key in this.currentPattern.parts) {
-            const value = this.currentPattern.parts[key];
-            if (value && finalExample.includes(value)) {
-                 const placeholder = `{{${this.capitalizeFirstLetter(key)}}}`;
-                 finalExample = finalExample.replace(value, placeholder);
-            }
+        
+        // Überprüfen, ob mindestens ein Teil zugewiesen wurde
+        if (!Object.values(this.currentPattern.parts).some(p => p)) {
+            this.showNotification('Bitte weisen Sie mindestens ein Datenfeld zu.', 'error');
+            return;
         }
         
         const patternToSave = {
@@ -1740,16 +1852,13 @@
             name: this.currentPattern.name,
             deviceName: this.currentPattern.deviceName,
             rawExample: this.currentPattern.rawExample,
-            parts: this.currentPattern.parts,
-            example: finalExample
+            parts: this.currentPattern.parts
         };
 
         const patterns = JSON.parse(JSON.stringify(this.qrCodePatterns));
         if(patternToSave.id) {
             const index = patterns.findIndex(p => p.id === patternToSave.id);
-            if(index !== -1) {
-                patterns[index] = patternToSave;
-            }
+            if(index !== -1) { patterns[index] = patternToSave; }
         } else {
             patternToSave.id = Date.now().toString();
             patterns.push(patternToSave);
@@ -1763,8 +1872,8 @@
             console.error('Fehler beim Speichern der Muster:', e);
             this.showNotification('Fehler beim Speichern der Muster.', 'error');
         }
-    },
-    async deletePattern(patternId) {
+      },
+      async deletePattern(patternId) {
         const updatedPatterns = this.qrCodePatterns.filter(p => p.id !== patternId);
         try {
             await setDoc(doc(db, 'config', 'qrCodePatterns'), { patterns: updatedPatterns });
@@ -1773,7 +1882,7 @@
             console.error('Fehler beim Löschen des Musters:', e);
             this.showNotification('Fehler beim Löschen des Musters.', 'error');
         }
-    },
+      },
     },
     async mounted(){
       window.addEventListener('online', () => this.isOnline = true);
@@ -1785,35 +1894,53 @@
           document.documentElement.classList.add('dark');
       }
 
-      // --- BYPASS LOGIN FOR TESTING ---
-      console.warn("--- TESTMODUS AKTIV: Login wird umgangen. ---");
+      onAuthStateChanged(auth, async (user) => {
+          if (user) {
+            const userQuery = query(collection(db, 'users'), where('email', '==', user.email));
+            const querySnapshot = await getDocs(userQuery);
+            let userData = { isAdmin: false, technicianName: null };
+            if (!querySnapshot.empty) {
+              userData = querySnapshot.docs[0].data();
+            }
 
-      // Simulate a logged-in admin user
-      this.user = {
-          loggedIn: true,
-          email: 'test@user.com',
-          uid: 'test-user-id',
-          isAdmin: true, // Give admin rights for full testing
-          technicianName: 'Test Techniker' // Also simulate a technician name
-      };
+            this.user = {
+              loggedIn: true,
+              email: user.email,
+              uid: user.uid,
+              isAdmin: userData.isAdmin || false,
+              technicianName: userData.technicianName || null
+            };
 
-      // Load all necessary data directly
-      this.listenToRepairs();
-      this.listenToConfig('houses', 'houses', 'list');
-      this.listenToConfig('technicians', 'technikerList', 'list');
-      onSnapshot(collection(db, 'knowledgeBase'), (s) => { this.knowledgeBase = s.docs.map(d => ({ id: d.id, ...d.data() })); });
-      onSnapshot(doc(db, 'config', 'qrCodePatterns'), (doc) => {
-          if (doc.exists() && doc.data().patterns) {
-              this.qrCodePatterns = doc.data().patterns;
+            // Load data only after user is confirmed and has roles
+            this.listenToRepairs();
+            this.listenToConfig('houses', 'houses', 'list');
+            this.listenToConfig('technicians', 'technikerList', 'list');
+            onSnapshot(collection(db, 'knowledgeBase'), (s) => { this.knowledgeBase = s.docs.map(d => ({ id: d.id, ...d.data() })); });
+            onSnapshot(doc(db, 'config', 'qrCodePatterns'), (doc) => {
+                if (doc.exists() && doc.data().patterns) {
+                    this.qrCodePatterns = doc.data().patterns;
+                }
+            });
+            if(this.user.isAdmin){
+                onSnapshot(collection(db,'users'), s => { this.userList = s.docs.map(d => ({ id:d.id, ...d.data() })); });
+            }
+            this.listenToConfig('commonErrors', 'commonErrors', 'list');
+
+          } else {
+            this.user = { loggedIn: false, email: null, uid: null, isAdmin: false, technicianName: null };
+            // Clear data on logout
+            this.repairs = [];
+            this.houses = [];
+            this.technikerList = [];
+            this.userList = [];
+            this.commonErrors = [];
+            this.knowledgeBase = [];
+            this.qrCodePatterns = [];
           }
-      });
-      onSnapshot(collection(db,'users'), s => { this.userList = s.docs.map(d => ({ id:d.id, ...d.data() })); });
-      this.listenToConfig('commonErrors', 'commonErrors', 'list');
-      
-      // Simulate the loading delay and set auth ready
-      const minDelay = new Promise(resolve => setTimeout(resolve, 1500));
-      await minDelay;
-      this.isAuthReady = true;
+          const minDelay = new Promise(resolve => setTimeout(resolve, 1500));
+          await minDelay;
+          this.isAuthReady = true;
+        });
     }
   };
 
